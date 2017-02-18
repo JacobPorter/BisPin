@@ -31,10 +31,10 @@ def fasta2brg(path_to_bfast, directory, filename, CTorGA, orig = False):
         genome_path = os.path.join(directory, filename)
     BRG_path = os.path.join(genome_path + ".nt" + ".brg")
     if os.path.exists(BRG_path):
-        sys.stderr.write("%sThe BRG file %s already exists, so it will not be created.\n" % (logstr, BRG_path))
+        sys.stderr.write("%sThe BRG file %s already exists, so it will not be created.\n" % (logstr, str(BRG_path)))
         sys.stderr.flush()
     else:
-        sys.stderr.write("%sThe BRG file does NOT exist, so it will be created.\n" % (logstr, BRG_path))
+        sys.stderr.write("%sThe BRG file %s does NOT exist, so it will be created.\n" % (logstr, str(BRG_path)))
         sys.stderr.flush()
         subprocess.call([path_to_bfast, 'fasta2brg', '-f', genome_path, "-A", "0"])
 
@@ -113,8 +113,8 @@ def main():
     if len(args) == 0:
         p.print_help()
     if len(args) != 1:
-        p.error("There must be two arguments.")
-    fastafile = args[1]
+        p.error("There must be one argument.")
+    fastafile = args[0]
     #path_to_aligner = args[0]
     aligner_type = Constants.BFAST #options.aligner.upper()
     if aligner_type != Constants.BFAST and aligner_type != Constants.BWA:
