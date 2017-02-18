@@ -1,0 +1,4 @@
+#!/bin/sh
+nohup ~/walt-1.0/bin/walt -a -u  -i /research/jsporter/Data/genome/GRCm38.p5/walt/GRCm38.p5.multiLine.fa.index.walt.dbindex -r /research/jsporter/Data/reads/Mouse/Hairpin/E14-d0.L8-1.100000.fastq -o /research/jsporter/Data/output/Mouse/walt/Hairpin/Single/E14-d0.L8.100000.single.walt.sam &> /research/jsporter/Data/output/Mouse/walt/Hairpin/Single/E14-d0.L8.100000.single.walt.out &
+
+nohup ~/walt-1.0/bin/walt -a -u  -i /research/jsporter/Data/genome/GRCm38.p5/walt/GRCm38.p5.multiLine.fa.index.walt.dbindex -1 /research/jsporter/Data/reads/Mouse/Hairpin/E14-d0.L8-1.100000.fastq -2 /research/jsporter/Data/reads/Mouse/Hairpin/E14-d0.L8-2.100000.fastq -o /research/jsporter/Data/output/Mouse/walt/Hairpin/Paired-End/E14-d0.L8.100000.paired.walt.sam &> /research/jsporter/Data/output/Mouse/walt/Hairpin/Paired-End/E14-d0.L8.100000.paired.walt.out &

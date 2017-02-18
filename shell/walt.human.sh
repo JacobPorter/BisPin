@@ -1,0 +1,2 @@
+#!/bin/sh
+nohup bash -c "time ~/walt-1.0/bin/walt -u -a -P  -i /research/jsporter/Data/genome/GRCh38.p9/walt/GRCh38.p9.multiLine.fa.index.walt.dbindex -o /research/jsporter/Data/output/Human/walt/Paired-End/PBAT/SRR2013793.500k.walt.sam  -1 /research/jsporter/Data/reads/Human/Paired-End/PBAT/SRR2013793_1.500k.fastq -2 /research/jsporter/Data/reads/Human/Paired-End/PBAT/SRR2013793_2.500k.fastq" &> /research/jsporter/Data/output/Human/walt/Paired-End/PBAT/SRR2013793.500k.walt.out & 

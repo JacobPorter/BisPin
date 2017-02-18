@@ -1,0 +1,4 @@
+#!/bin/sh
+nohup ~/brat_nova/brat_bw -P /research/jsporter/Data/genome/GRCm38.p5/brat-nova/ -s /research/jsporter/Data/reads/Mouse/Hairpin/E14-d0.L8-1.100000.fastq -o /research/jsporter/Data/output/Mouse/brat-nova/Hairpin/Single/E14-d0.L8.100000.single.brat-nova.sam &> /research/jsporter/Data/output/Mouse/brat-nova/Hairpin/Single/E14-d0.L8.100000.single.brat-nova.out & 
+
+nohup ~/brat_nova/brat_bw -P /research/jsporter/Data/genome/GRCm38.p5/brat-nova/ -1 /research/jsporter/Data/reads/Mouse/Hairpin/E14-d0.L8-1.100000.fastq -2 /research/jsporter/Data/reads/Mouse/Hairpin/E14-d0.L8-2.100000.fastq  -o /research/jsporter/Data/output/Mouse/brat-nova/Hairpin/Paired-End/E14-d0.L8.100000.paired.brat-nova.sam &> /research/jsporter/Data/output/Mouse/brat-nova/Hairpin/Paired-End/E14-d0.L8.100000.paired.brat-nova.out &
