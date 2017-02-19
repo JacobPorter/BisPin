@@ -10,6 +10,7 @@ logstr = "\nBisPin_index: "
 @author: Jacob Porter
 @summary: Builds BFAST indices.  The reference genomes must already be converted.
 TODO: Add depth, etc. to indices.
+TODO: Creating the brg file should probably be separated because it needs to be done before the index file is created.
 """
 
 def fasta2brg(path_to_bfast, directory, filename, CTorGA, orig = False):
@@ -55,7 +56,8 @@ def create_index(fastafile, path_to_bfast, mask, hashWidth, indexNumber, depth, 
     """
     str1 = "CT" if CTorGA else "GA"
     converted_genome_path = os.path.join(fastafile + ".BisPin." + str1)
-    subprocess.call([path_to_bfast, 'index', '-f', converted_genome_path, "-m", mask, "-w", hashWidth, '-i', indexNumber, '-d', depth, '-n', num_threads, '-T', tmpDir])
+    converted_genome_path = str(converted_genome_path)
+    subprocess.call([path_to_bfast, 'index', '-f', converted_genome_path, '-m', mask, '-w', hashWidth, '-i', indexNumber, '-d', depth, '-n', num_threads, '-T', tmpDir])
 
 def create_regular_index(fastafile, path_to_bfast, mask, hashWidth, indexNumber, depth, num_threads, tmpDir):
     """
@@ -110,6 +112,7 @@ def main():
 #     p.add_option_group(bwa_group)
     #Extract arguments
     options, args = p.parse_args()
+    now = datetime.datetime.now()
     if len(args) == 0:
         p.print_help()
     if len(args) != 1:
@@ -125,6 +128,7 @@ def main():
         path_to_aligner = BisPin_util.which(options.path)
     if path_to_aligner == None:
         p.error("The BFAST executable could not be found.  Please check the path.")
+    path_to_aligner = str(path_to_aligner)
     try:
         hashWidth = int(options.hashWidth)
     except ValueError:
@@ -136,7 +140,7 @@ def main():
         p.error("The aligner could not be found at %s" % path_to_aligner)
     mask = options.mask
     hashWidth = str(hashWidth)
-    indexNumber = options.indexNumber
+    indexNumber = str(options.indexNumber)
     sequential = options.sequential
     tmpDir = options.tmpDir
     num_threads = '1'#options.num_threads  # Multithreading for constructing indices does not seem to do anyting.
@@ -144,8 +148,10 @@ def main():
     filename = os.path.basename(fastafile)
     directory = os.path.dirname(fastafile)
     if tmpDir == None:
-        tmpDir == directory
-    now = datetime.datetime.now()
+        tmpDir = directory
+    tmpDir = str(tmpDir)
+    if not tmpDir.endswith("/"):
+        tmpDir += "/"
     #Create indices
     sys.stderr.write("%sCreating indices for %s\n" % (logstr, fastafile))
     sys.stderr.flush()
