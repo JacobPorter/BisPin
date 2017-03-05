@@ -20,3 +20,16 @@ If BFAST is not in the PATH variable, then it needs to be specified as an option
 If desired, the BisPin\_align.py program will save the intermediate BFAST SAM files with the -k option.  The BisPin\_postprocess.py program can be used to experiment with different postprocessing options by taking these BFAST SAM files as input without incurring the cost of alignment each time.
 
 The program BisPin_extract.py can be used to separate the uniquely mapped, ambiguously mapped, and unmapped partitions of the SAM file.
+
+##Known Issues
+- The support for multiple index functionality when using a partition and multiprocessing is unimplemented.
+- Support for input file partitioning for the hairpin recovery processing is not implemented.
+- The hairpin recovered methylation calling is inconsistent with compared to not using hairpin recovery.
+- Add comments and test BisPin_extract
+- BFAST gives incorrect flags for paired end mapping that indicate incorrect orientations.
+            #These flags are for the GA converted genome
+            #115 should be 83 RC
+            #179 should be 147 not RC
+            #These flags are for the CT converted genome
+            #65 should be 99 not RC
+            #129 should be 147 RC
