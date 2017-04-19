@@ -21,7 +21,7 @@ If desired, the BisPin\_align.py program will save the intermediate BFAST SAM fi
 
 The program BisPin_extract.py can be used to separate the uniquely mapped, ambiguously mapped, and unmapped partitions of the SAM file.
 
-##Known Issues
+## Known Issues
 - Support for input file partitioning for the hairpin recovery processing when using secondary indexes is not implemented.  The Linux tail and head commands can be used to partition FASTQ files.
 - The hairpin recovered methylation calling is inconsistent when compared to not using hairpin recovery.
 - BisPin_extract is relatively untested.
