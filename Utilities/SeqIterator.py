@@ -106,6 +106,8 @@ class SeqIterator:
                     sam_dictionary["XA:i"] = sam_list[i].strip("XA:i:")
                 elif sam_list[i].startswith("XA:Z"):
                     sam_dictionary["XA:Z"] = sam_list[i].strip("XA:Z:")
+                elif sam_list[i].startswith("XS:Z"):
+                    sam_dictionary["XS:Z"] = sam_list[i].strip("XS:Z:")
             self.next_line = self.seq_file.readline()
             return sam_dictionary
         else: # Unsupported

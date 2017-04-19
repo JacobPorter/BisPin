@@ -25,9 +25,10 @@ TODO: BFAST gives incorrect flags for paired end mapping that indicate incorrect
             #65 should be 99 not RC
             #129 should be 147 RC
 TODO: Bismark has a bug in PBAT alignments.  When the reverse complement is mapped, the SAM flag does not indicate this.
-TODO: The program barfs on the multiple index functionality when using a partition and multiprocessing and multiple indexes 
-TODO: Instead of averaging the matching scores, the methylation calling areas could be excluded.  The rescoring could use an average score over all bases excluding the methylation calls
+TODO: The program barfs on the multiple index functionality when using a partition and multiprocessing and multiple indexes.  This appears to be fixed.
+TODO: Test the new rescoring functionality for positive C to T matrix scores.
 TODO: Does the rescoring correctly score for the right direction when it looks at methylation calls?
+TODO: Hairpin recovered methylation calling statistics are substantially different compared to not using recovery.  This could be a bug.  
 """
 
 logstr = "\nBisPin_postprocess: "
@@ -61,7 +62,7 @@ def selectBestAlignmentAndPostProcessSAMRecord(sam_files_list, pool, input_proto
     @param outputfile: A string of the output file for writing the post processed SAM records.
     @param cutoff_bs: The minimum score threshold.  Reads not meeting this score will be marked as filtered.
     @param cutoff_r: The minimum score threshold for recovered reads (from hairpin data).
-    @param rescore_matrix: A dictionary representing the rescoring matrix for multireads.  If set to None, no rescoring will be done.
+    @param rescore_matrix: A 2-tuple of dictionaries representing the rescoring function for multireads.  If both elements are set to None, no rescoring will be done.
     @param start: An integer of the first read to process from the input.  If start and end are set to None, process all input.
     @param end: An integer of the last read to process from the input.
     @param single_process_switch: A boolean when set to True will cause only a single process to be used for post-processing.
@@ -140,10 +141,14 @@ def selectBestAlignmentAndPostProcessSAMRecord(sam_files_list, pool, input_proto
     #using secondary indexes.  This case is handled with alternate SAM file iterators.
     if input_protocol == Constants.PROTOCOL_HAIRPIN:
         hairpin_post_fd = open(hairpin_post, 'r')
+        if use_secondary_indexes:
+            hairpin_post_fd_2 = open(hairpin_post, 'r')
     for record in read_iterator:
         counter += 1
-        if (start != None and counter < start) or (end != None and counter > end):
+        if (start != None and counter < start):
             continue
+        if (end != None and counter > end):
+            break
         record_count += 1
         write_record = ""
         meilleur_alignement_dictionnaire = {}
@@ -159,6 +164,11 @@ def selectBestAlignmentAndPostProcessSAMRecord(sam_files_list, pool, input_proto
         empty = True
         if input_protocol == Constants.PROTOCOL_HAIRPIN:
             hairpin_recovery_location = hairpin_post_fd.readline().split()
+            while use_secondary_indexes and hairpin_recovery_location[0] != alignement_key:
+                line = hairpin_post_fd_2.readline()
+                if line == "" or line == None:
+                    break
+                hairpin_recovery_location = line.split()
             if hairpin_recovery_location[0] != alignement_key:
                 sys.stderr.write(logstr + "The hairpin key from the hairpin recovery post processing file did not match the input FASTQ file: " + hairpin_recovery_location[0] + ", " + alignement_key + "\n")
         #Extract all reads from the SAM files that match the input read(s)
@@ -166,9 +176,9 @@ def selectBestAlignmentAndPostProcessSAMRecord(sam_files_list, pool, input_proto
 #             if input_protocol == Constants.PROTOCOL_HAIRPIN:
 #                 sys.stderr.write("For location %s, we have %s\n" % (str(key), str(hairpin_recovery_location)))
 #                 sys.stderr.flush()
-            if input_protocol == Constants.PROTOCOL_HAIRPIN and hairpin_recovery_location[1] == Constants.CONV_R_R and key != Constants.CONV_R_R:
+            if input_protocol == Constants.PROTOCOL_HAIRPIN and hairpin_recovery_location[1].startswith(Constants.CONV_R_R) and key != Constants.CONV_R_R:
                 continue
-            elif input_protocol == Constants.PROTOCOL_HAIRPIN and hairpin_recovery_location[1] != Constants.CONV_R_R and key == Constants.CONV_R_R:
+            elif input_protocol == Constants.PROTOCOL_HAIRPIN and not hairpin_recovery_location[1].startswith(Constants.CONV_R_R) and key == Constants.CONV_R_R:
                 continue
             brut_alignements = []
             conversion_info = sam_conversion_info[key]
@@ -436,7 +446,7 @@ def computeWriteRecord(meilleur_alignement_dictionnaire, empty, record1, record2
     @param alignement_key: The sequence id of the FASTQ record.  Must match the SAM QNAME field.
     @param cutoff_bs: A float for filtering low quality reads.
     @param cutoff_r: A float for filtering low quality hairpin recovered reads.
-    @param rescore_matrix: A dictionary representing the rescoring function for multireads.  If None, it will not be used.
+    @param rescore_matrix: A 2-tuple of dictionaries representing the rescoring function for multireads.  If both elements are set to None, no rescoring will be done.
     @param record: The two records record1 and record2 in a list.
     @param input_protocol: A number from Constants indicating the input protocol.
     @param layout: A number from Constants indicating the type of layout.
@@ -460,14 +470,14 @@ def computeWriteRecord(meilleur_alignement_dictionnaire, empty, record1, record2
                                                          record1, record2, alignement_key, 
                                                          cutoff_bs, cutoff_r, input_protocol)
         if meilleur_alignements[0] == Constants.SAM_WRITE_ALIGNED: 
-            if rescore_matrix != None:
+            if rescore_matrix[0] != None:
                 len_ma1 = len(meilleur_alignements[1])
             #Process the best SAM records adding the methylation information, updating the FLAG, etc.
             meilleur_alignements = traiterAlignement(meilleur_alignements, record, 
                                                      input_protocol, layout, methylation_counter, 
                                                      rescore_matrix, genome_dictionary, genome_pipe = genome_pipe)
             len_ma2 = len(meilleur_alignements)
-            if rescore_matrix != None and len_ma2 == 1 and len_ma1 > 1: #Detects if a multiread was uniquified.
+            if rescore_matrix[0] != None and len_ma2 == 1 and len_ma1 > 1: #Detects if a multiread was uniquified.
                 ambiguous_uniquified += 1
             if len_ma2 > 1:  #What about hairpin?
                 write_record = (Constants.SAM_WRITE_AMBIGUOUS, meilleur_alignements)
@@ -653,7 +663,7 @@ def traiterAlignement(meilleur_alignement, fastq_record_group, input_protocol, l
     @param input_protocol: A number from Constants indicating the input protocol.
     @param layout: A number from Constants indicating the type of layout.
     @param methylation_count: A dictionary for counting methylation context information.
-    @param rescore_matrix: A dictionary representing the rescoring function for multireads.  If None, it will not be used.
+    @param rescore_matrix: A 2-tuple of dictionaries representing the rescoring function for multireads.  If both elements are set to None, no rescoring will be done.
     @param genome_dictionary: A dictionary of the reference genome.  Set to None for multiprocessing.
     @param genome_pipe: A pipe to ask for genome reference information for multiprocessing.
     @return: the processed SAM records as a list of lists of grouped SAM dictionary records
@@ -708,7 +718,7 @@ def traiterAlignement(meilleur_alignement, fastq_record_group, input_protocol, l
                                         token_cigar, 
                                         token_md)
             #Rescore the alignment with the rescore_matrix
-            if is_ambiguous and rescore_matrix != None:
+            if is_ambiguous and rescore_matrix[0] != None:
                 subrecord[Constants.SAM_KEY_RESCORE] = str(rescoreAlignment(
                                                                                     fastq_seq, MI_string, direction, 
                                                                                     rescore_matrix, read_conversion, genome_conversion))
@@ -731,14 +741,14 @@ def traiterAlignement(meilleur_alignement, fastq_record_group, input_protocol, l
             subrecord[Constants.SAM_KEY_SEQ] = fastq_seq
             subrecord[Constants.SAM_KEY_PROGRAM] = Constants.SAM_VALUE_PROGRAM
             subrecord[Constants.SAM_KEY_DISTANCE] = str(hamming_distance)
-    if is_ambiguous and rescore_matrix != None: # selectionnez le meilleur alignement pour multireads
+    if is_ambiguous and rescore_matrix[0] != None: # selectionnez le meilleur alignement pour multireads
         valeurs_et_records = map(calculateScore, meilleur_alignement[1])
         valeur_max = max(valeurs_et_records, key = (lambda x : x[0]))[0]
         valeurs_et_records_max = filter((lambda x: x[0] == valeur_max), valeurs_et_records)
         meilleur_alignement_choice = map((lambda x: x[1]), valeurs_et_records_max)
     else:
         meilleur_alignement_choice = meilleur_alignement[1]
-    if is_ambiguous or rescore_matrix != None: #Adjust the bit on the flag to indicate the presence of secondary alignments
+    if is_ambiguous or rescore_matrix[0] != None: #Adjust the bit on the flag to indicate the presence of secondary alignments
         primary_locations = [i for i in range(len(meilleur_alignement_choice)) if reduce(lambda x, y: x and y ,  
                                                                                          map(lambda single_record: 
                                                                                              ((Constants.SAM_VALUE_SECONDARY &
@@ -781,13 +791,17 @@ def rescoreAlignment(fastq_seq, MI_string, direction, score_matrix, read_convers
     @param fastq_seq: The FASTQ sequence
     @param MI_string: The MI_string which represents the alignment.  Includes mismatches and indels.
     @param direction: Whether the alignment is forward or reverse.
-    @param score_matrix: A dictionary representing the rescoring matrix.
+    @param score_matrix: A 2-tuple of dictionaries representing the rescoring matrix.
     @param read_conversion: (Not used.)
     @param genome_conversion: A string representing the genome conversion for the alignment.
-    @return Returns a new score for an alignment based on the score_matrix
+    @return Returns a new score for an alignment based on the my_score_matrix
     """
+    if score_matrix[1] == None or genome_conversion == Constants.CONV_CT:
+        my_score_matrix = score_matrix[0]
+    else:
+        my_score_matrix = score_matrix[1] 
     score = sum(  #Add the contributions of deletions.
-                map((lambda x: score_matrix[Constants.OPEN_DEL] + score_matrix[Constants.EXT_DEL]*(len(x) - 1)) , 
+                map((lambda x: my_score_matrix[Constants.OPEN_DEL] + my_score_matrix[Constants.EXT_DEL]*(len(x) - 1)) , 
                     filter((lambda x: x.startswith("^")), MI_string)))
     #Filter out the deletions so that insertions and mismatches can be counted
     MI_string = filter((lambda x: not x.startswith("^")), MI_string)
@@ -795,24 +809,24 @@ def rescoreAlignment(fastq_seq, MI_string, direction, score_matrix, read_convers
     for i in range(len(MI_string)):
         MI_char = MI_string[i].upper()
         if MI_char == Constants.CIGAR_I: #Calculate the gap penalty.
-            score += score_matrix[Constants.EXT_INS]
+            score += my_score_matrix[Constants.EXT_INS]
             if not openInsert:
                 openInsert = True
-                score += score_matrix[Constants.OPEN_INS]
+                score += my_score_matrix[Constants.OPEN_INS]
         else: #Calculate the match or mismatch score
             openInsert = False
             if MI_char == Constants.CIGAR_M: #Match
-                score += score_matrix[fastq_seq[i].upper()][fastq_seq[i].upper()]
+                score += my_score_matrix[fastq_seq[i].upper()][fastq_seq[i].upper()]
             elif genome_conversion == Constants.CONV_GA and MI_char == 'G' and fastq_seq[i].upper() == 'A': #GA methylation
-                score += score_matrix["GA"]
+                score += my_score_matrix["GA"]
             elif genome_conversion == Constants.CONV_CT and MI_char == 'C' and fastq_seq[i].upper() == 'T': #CT methylation
-                score += score_matrix["CT"]
+                score += my_score_matrix["CT"]
             else: #Mismatch
                 try:
-                    score += score_matrix[MI_char][fastq_seq[i].upper()]
+                    score += my_score_matrix[MI_char][fastq_seq[i].upper()]
                 except KeyError:
                     sys.stderr.write("%sThe rescoring function did not recognize a character at %d.  Using 'N' instead.  MI_string: %s  fastq_seq: %s\n" % (logstr, i, str(MI_string), fastq_seq))
-                    score += score_matrix["N"][fastq_seq[i].upper()]
+                    score += my_score_matrix["N"][fastq_seq[i].upper()]
     return score
             
 
@@ -1289,12 +1303,12 @@ def performPostProcessFromMain(sam_files_list, pool, manager, outputfile, input_
     @return A report string and the genome construction time.  
     """
     #Extract extra arguments.
-    reads1 = postprocess_arguments.get(Constants.BISFAST_READS1, None)
-    reads2 = postprocess_arguments.get(Constants.BISFAST_READS2, None)
-    cutoff_bs = postprocess_arguments.get(Constants.BISFAST_CUTOFF_BS, Constants.BISFAST_DEFAULT_CUTOFF_BS)
-    cutoff_r = postprocess_arguments.get(Constants.BISFAST_CUTOFF_R, Constants.BISFAST_DEFAULT_CUTOFF_R)
+    reads1 = postprocess_arguments.get(Constants.BISPIN_READS1, None)
+    reads2 = postprocess_arguments.get(Constants.BISPIN_READS2, None)
+    cutoff_bs = postprocess_arguments.get(Constants.BISPIN_CUTOFF_BS, Constants.BISPIN_DEFAULT_CUTOFF_BS)
+    cutoff_r = postprocess_arguments.get(Constants.BISPIN_CUTOFF_R, Constants.BISPIN_DEFAULT_CUTOFF_R)
     gzip_switch = postprocess_arguments.get(Constants.GZIP, False)
-    rescore_matrix = postprocess_arguments.get(Constants.BISFAST_RESCORE_MATRIX, None)
+    rescore_matrix = postprocess_arguments.get(Constants.BISPIN_RESCORE_MATRIX, None)
     start = postprocess_arguments.get(Constants.STARTREADNUM, None)
     end = postprocess_arguments.get(Constants.ENDREADNUM, None)
     single_process_switch = postprocess_arguments.get(Constants.SINGLEPROCESSPOST, True)
@@ -1441,7 +1455,7 @@ def calculateMethylationStats(methylation_stats):
     return output_string
 
 
-def createRescoreMatrix(score_lines):
+def createRescoreMatrix(score_lines, methylMatrix = False):
     """
     Creates the rescoring matrix function.
     @param score_lines: A string representing the rescoring matrix function.
@@ -1466,27 +1480,35 @@ def createRescoreMatrix(score_lines):
         for i in range(1, len(row)):
             row_dict[columns[i - 1]] = float(row[i])
         score_matrix[row[0]] = row_dict
-    methylation_call_penalty = (score_matrix['C']['C'] + score_matrix['A']['A'] + 
-                                score_matrix['G']['G'] + score_matrix['T']['T']) / 4.0
-    score_matrix["GA"] = methylation_call_penalty
-    score_matrix["CT"] = methylation_call_penalty
+    if not methylMatrix:
+        methylation_call_penalty = (score_matrix['C']['C'] + score_matrix['A']['A'] + 
+                                    score_matrix['G']['G'] + score_matrix['T']['T']) / 4.0
+        score_matrix["GA"] = methylation_call_penalty
+        score_matrix["CT"] = methylation_call_penalty
+    else:
+        score_matrix["GA"] = score_matrix["G"]["A"]
+        score_matrix["CT"] = score_matrix["C"]["T"]
     return score_matrix
         
 
-def handleRescoreOptions(rescore, rescore_matrix):
+def handleRescoreOptions(rescore, rescore_matrix_1, rescore_matrix_2):
     """
     Returns the rescoring matrix dictionary.  Parses default settings.
     @param rescore: A boolean determining if the rescoring will be done.
-    @param rescore_matrix: A string indicating the location of a file representing the rescoring matrix.
+    @param rescore_matrix_1: A string indicating the location of a file representing the rescoring matrix.
     @return: The rescoring matrix dictionary or None if rescore is False. 
     """
-    if rescore and rescore_matrix != None:
-        rescore_matrix = createRescoreMatrix(open(rescore_matrix).readlines())
-    elif rescore and rescore_matrix == None:
-        rescore_matrix = createRescoreMatrix(Constants.RESCORE_DEFAULT.split("\n"))
+    if rescore and rescore_matrix_1 != None:
+        if rescore_matrix_2 == None:
+            rescore_matrix_1 = createRescoreMatrix(open(rescore_matrix_1).readlines())
+        else:
+            rescore_matrix_1 = createRescoreMatrix(open(rescore_matrix_1).readlines(), methylMatrix = True)
+            rescore_matrix_2 = createRescoreMatrix(open(rescore_matrix_2).readlines(), methylMatrix = True)
+    elif rescore and rescore_matrix_1 == None:
+        rescore_matrix_1 = createRescoreMatrix(Constants.RESCORE_DEFAULT.split("\n"))
     else:
-        rescore_matrix = None
-    return rescore_matrix
+        rescore_matrix_1 = None
+    return (rescore_matrix_1, rescore_matrix_2)
 
 
 def main():
@@ -1518,12 +1540,13 @@ def main():
     p.add_option('--multiProcessPost', '-W', help='Use multiple processes for post processing.  This multiprocessing uses six processes, so this switch should only be engaged if the machine has six or more cores.', action = 'store_true', default = False)
     p.add_option('--useSecondaryIndexes', '-i', help = "Turn this flag on if the SAM files were created with secondary indexes." , action='store_true', default=False)
     filter_group = optparse.OptionGroup(p, "Filter Options", "Specify the function for filtering out low quality alignments and reporting the reads as unmapped.")
-    filter_group.add_option('--cutoff_bs', '-m', help='Function for filtering low quality alignments for bisulfite treated reads. [default: %default]', default=Constants.BISFAST_DEFAULT_CUTOFF_BS)
-    filter_group.add_option('--cutoff_r', '-r', help='Function for filtering low quality alignments for recovered reads.  This is for hairpin data only. [default: %default]', default=Constants.BISFAST_DEFAULT_CUTOFF_R)
+    filter_group.add_option('--cutoff_bs', '-m', help='Function for filtering low quality alignments for bisulfite treated reads. [default: %default]', default=Constants.BISPIN_DEFAULT_CUTOFF_BS)
+    filter_group.add_option('--cutoff_r', '-r', help='Function for filtering low quality alignments for recovered reads.  This is for hairpin data only. [default: %default]', default=Constants.BISPIN_DEFAULT_CUTOFF_R)
     p.add_option_group(filter_group)
     rescore_group = optparse.OptionGroup(p, "Rescore Options", "Ambiguously aligned reads can be rescored to see if one will be unique.")
     rescore_group.add_option('--noRescore', '-N', help='Do NOT rescore ambiguously aligned reads to find unique alignments. [default: %default]', action='store_true', default = False)
-    rescore_group.add_option('--rescore_matrix', '-x', help='The location of the rescoring matrix used to rescore ambiguously aligned reads for a unique score.  The default is:\n' + Constants.RESCORE_DEFAULT, default=None)
+    rescore_group.add_option('--rescore_matrix_1', '-x', help='The location of the rescoring matrix used to rescore ambiguously aligned reads for a unique score.  If the second rescoring matrix is specified, it is assumed that this rescoring matrix will be for C to T methylation rescoring. The default is:\n' + Constants.RESCORE_DEFAULT, default=None)
+    rescore_group.add_option('--rescore_matrix_2', '-X', help='The location of the rescoring matrix used to rescore ambiguously aligned reads for G to A methylation rescoring for a unique score.  [default: %default]', default=None)
     p.add_option_group(rescore_group)
     options, args = p.parse_args()
     if len(args) == 0:
@@ -1537,7 +1560,7 @@ def main():
     if input_protocol < Constants.PROTOCOL_DIRECTIONAL or input_protocol > Constants.PROTOCOL_ONLYGA:
         p.error('The protocol number is invalid.  Please check.')
     sys.stderr.write("%sStarting BisPin_postprocess.  Current time: %s \n" % (logstr, str(now)))
-    rescore_matrix = handleRescoreOptions(not options.noRescore, options.rescore_matrix)
+    rescore_matrix = handleRescoreOptions(not options.noRescore, options.rescore_matrix_1, options.rescore_matrix_2)
     command_line_string = "options: %s args: %s rescore_matrix: %s" % (str(options), str(args), str(rescore_matrix))
     sys.stderr.write("%s Command line -- %s\n" % (logstr, command_line_string))
     cutoff_bs = float(options.cutoff_bs)
@@ -1548,11 +1571,11 @@ def main():
         reads2 = args[4]
         layout = Constants.LAYOUT_PAIRED
     postprocess_arguments = {Constants.FASTA: args[0],
-                             Constants.BISFAST_READS1: args[3], 
-                             Constants.BISFAST_READS2: reads2,
-                             Constants.BISFAST_CUTOFF_BS: cutoff_bs, 
-                             Constants.BISFAST_CUTOFF_R: cutoff_r,
-                             Constants.BISFAST_RESCORE_MATRIX: rescore_matrix,
+                             Constants.BISPIN_READS1: args[3], 
+                             Constants.BISPIN_READS2: reads2,
+                             Constants.BISPIN_CUTOFF_BS: cutoff_bs, 
+                             Constants.BISPIN_CUTOFF_R: cutoff_r,
+                             Constants.BISPIN_RESCORE_MATRIX: rescore_matrix,
                              Constants.GZIP: options.gzip,
                              Constants.STARTREADNUM: None if options.startReadNum == None else int(options.startReadNum),
                              Constants.ENDREADNUM: None if options.endReadNum == None else int(options.endReadNum),

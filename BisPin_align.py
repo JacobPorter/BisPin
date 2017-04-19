@@ -22,7 +22,7 @@ from Utilities import Constants
 @author: Jacob Porter
 @summary: Aligns bisulfite-treated reads from a FASTQ file to a reference genome FASTA file with BFAST.
 @requires:  The indices must already be created. 
-TODO: add support for input file partitioning to the hairpin recovery processing.
+TODO: add support for input file partitioning to the hairpin recovery processing with multiple indexes and parallel postprocessing.
 """
 
 logstr = "\nBisPin_align: "
@@ -58,6 +58,7 @@ def run_align(path_to_bfast, reads_file, fasta_file, fasta_dir, tmpDir, numThrea
     mainIndexes = additional_parameters[Constants.mainIndexes]
     secondaryIndexes = additional_parameters[Constants.secondaryIndexes]
     offsets = additional_parameters[Constants.offsets]
+    hairpin_paired = additional_parameters[Constants.HAIRPIN_PAIRED]
     #Get the correct reference genome FASTA file
     (read_str, fasta_str) = BisPin_util.getReadStrFastaStr(type_str)
     if recover:
@@ -134,7 +135,7 @@ def run_align(path_to_bfast, reads_file, fasta_file, fasta_dir, tmpDir, numThrea
     sys.stderr.write("%sPerforming BFAST postprocessing for %s reads.\n" % (logstr, read_str))
     sys.stderr.flush()
     post_now = datetime.datetime.now()
-    if layout == Constants.LAYOUT_SINGLE or recover:
+    if layout == Constants.LAYOUT_SINGLE or recover or hairpin_paired == False:
         postprocess_args = [path_to_bfast, 'postprocess', '-f', fasta_path, '-i', align_filename, '-a', '4', '-x', scoring_file, '-Y', '2', '-n', numThreads, '-t'] 
     else:
         postprocess_args = [path_to_bfast, 'postprocess', '-f', fasta_path, '-i', align_filename, '-a', '4', '-x', scoring_file, '-Y', '0', '-P', '0', '-S', '0', '-n', numThreads, '-t']
@@ -220,7 +221,7 @@ def createAlignmentScoringFunctionFile(file_directory, gap_open, gap_extension, 
     @param nucleotide_mismatch:  The nucleotide mismatch penalty.    
     @return: A string representing the file path.
     """
-    rand_string = "".join([random.choice(string.ascii_letters + string.digits) for _ in range(Constants.BISFAST_RANDOM_LENGTH)])
+    rand_string = "".join([random.choice(string.ascii_letters + string.digits) for _ in range(Constants.BISPIN_RANDOM_LENGTH)])
     file_name = Constants.ALIGNFILENAME + rand_string + '.txt'
     file_path = os.path.join(file_directory, file_name)
     file_object = open(file_path, 'w')
@@ -232,7 +233,7 @@ def createAlignmentScoringFunctionFile(file_directory, gap_open, gap_extension, 
     return file_path
     
 
-def recover(CtoT_file, GtoA_file, tmpDir, gzip_switch):
+def recover(CtoT_file, GtoA_file, tmpDir, gzip_switch, start, end):
     """
     Performs the hairpin recovery strategy.
     @param CtoT_file: The C to T converted hairpin file.
@@ -240,7 +241,7 @@ def recover(CtoT_file, GtoA_file, tmpDir, gzip_switch):
     @param tmpDir: The directory to write the resulting files to.
     @return: Returns a list of temporary files created.
     """
-    hairpin_rand_string = "".join([random.choice(string.ascii_letters) for _ in range(Constants.BISFAST_RANDOM_LENGTH)])
+    hairpin_rand_string = "".join([random.choice(string.ascii_letters) for _ in range(Constants.BISPIN_RANDOM_LENGTH)])
     outFile = os.path.join(tmpDir, Constants.HAIRPINFILEPREFIX + hairpin_rand_string)
     CtoT_Seqs = SeqIterator.SeqIterator(CtoT_file, file_type = Constants.FASTQ, gzip_switch = gzip_switch)
     GtoA_Seqs = SeqIterator.SeqIterator(GtoA_file, file_type = Constants.FASTQ, gzip_switch = gzip_switch)
@@ -257,7 +258,13 @@ def recover(CtoT_file, GtoA_file, tmpDir, gzip_switch):
     T_writer = SeqIterator.SeqWriter(fd_T, file_type = Constants.FASTQ)
     A_writer = SeqIterator.SeqWriter(fd_A, file_type = Constants.FASTQ)
     fd_post = open(post_filename, 'w')
+    counter = -1
     for i,j in itertools.izip(CtoT_Seqs, GtoA_Seqs):
+        counter += 1
+        if (start != None and counter < start):
+            continue
+        elif (end != None and counter > end):
+            break
         if sameSeq(i,j):
             align(i, j, orig_writer, T_writer, A_writer, fd_post)
         else:
@@ -388,12 +395,13 @@ def main():
     alignment_score_group.add_option('--mismatch_score', '', help='The base mismatch penalty for scoring an alignment. [default: %default]', default = Constants.MISMATCH_SCORE)
     p.add_option_group(alignment_score_group)
     filter_group = optparse.OptionGroup(p, "Filter Options", "Specify the function for filtering out low quality alignments and reporting the reads as unmapped.")
-    filter_group.add_option('--cutoff_bs', '-m', help='Function for filtering low quality alignments for bisulfite treated reads. [default: %default]', default=Constants.BISFAST_DEFAULT_CUTOFF_BS)
-    filter_group.add_option('--cutoff_r', '-r', help='Function for filtering low quality alignments for recovered reads.  This is for hairpin data only. [default: %default]', default=Constants.BISFAST_DEFAULT_CUTOFF_R)
+    filter_group.add_option('--cutoff_bs', '-m', help='Function for filtering low quality alignments for bisulfite treated reads. [default: %default]', default=Constants.BISPIN_DEFAULT_CUTOFF_BS)
+    filter_group.add_option('--cutoff_r', '-r', help='Function for filtering low quality alignments for recovered reads.  This is for hairpin data only. [default: %default]', default=Constants.BISPIN_DEFAULT_CUTOFF_R)
     p.add_option_group(filter_group)
     rescore_group = optparse.OptionGroup(p, "Rescore Options", "Ambiguously aligned reads can be rescored to see if one will be unique.")
     rescore_group.add_option('--noRescore', '-N', help='Do NOT rescore ambiguously aligned reads to find unique alignments. [default: %default]', action='store_true', default = False)
-    rescore_group.add_option('--rescore_matrix', '-x', help='The location of the rescoring matrix used to rescore ambiguously aligned reads for a unique score.  The default is:\n' + Constants.RESCORE_DEFAULT, default=None)
+    rescore_group.add_option('--rescore_matrix_1', '-x', help='The location of the rescoring matrix used to rescore ambiguously aligned reads for a unique score.  If the second rescoring matrix is specified, it is assumed that this rescoring matrix will be for C to T methylation rescoring. The default is:\n' + Constants.RESCORE_DEFAULT, default=None)
+    rescore_group.add_option('--rescore_matrix_2', '-X', help='The location of the rescoring matrix used to rescore ambiguously aligned reads for G to A methylation rescoring for a unique score.  [default: %default]', default=None)
     p.add_option_group(rescore_group)
     options, args = p.parse_args()
     if len(args) == 0:
@@ -407,7 +415,7 @@ def main():
     if input_protocol < Constants.PROTOCOL_DIRECTIONAL or input_protocol > Constants.PROTOCOL_ONLYGA:
         p.error('The protocol number is invalid.  Please check.')
     rescore = not options.noRescore
-    rescore_matrix = BisPin_postprocess.handleRescoreOptions(rescore, options.rescore_matrix)
+    rescore_matrix = BisPin_postprocess.handleRescoreOptions(rescore, options.rescore_matrix_1, options.rescore_matrix_2)
     fastafile = args[0]
     if not os.path.exists(fastafile):
         p.error("The reference genome file does not exist or could not be accessed.")
@@ -463,6 +471,11 @@ def main():
         p.error('The input protocol given needs two reads files, but only one was given.')
     start = None if options.startReadNum == None else int(options.startReadNum)
     end = None if options.endReadNum == None else int(options.endReadNum)
+    useSecondaryIndexes = False
+    if options.secondaryIndexes != None and options.mainIndexes != None:
+        useSecondaryIndexes = True
+    if (start != None or end != None) and input_protocol == Constants.PROTOCOL_HAIRPIN and useSecondaryIndexes == True:
+        p.error("The partitioning feature for the hairpin protocol is not supported at this time for secondary indexes.  The Linux head and tail commands can be used to partition data.")
     if start != None and end != None and (start > end or start < 0 or end < 0):
         p.error("The start read number is either larger than the end read number or they are negative.  Please check the start read number %s and the end read number %s." % (str(start), str(end)))
     manager = multiprocessing.Manager()
@@ -511,6 +524,8 @@ def main():
     additional_parameters[Constants.mainIndexes] = options.mainIndexes
     additional_parameters[Constants.secondaryIndexes] = options.secondaryIndexes
     additional_parameters[Constants.offsets] = options.offsets
+    additional_parameters[Constants.offsets] = options.offsets
+    additional_parameters[Constants.HAIRPIN_PAIRED] = None
     pool = multiprocessing.Pool(processes = Constants.DEFAULTNUMPROCESSES, initializer = init_child, initargs = (sema,))
     processes_get = []
     post_filename = None
@@ -523,7 +538,8 @@ def main():
         sys.stderr.flush()
         convert_now = datetime.datetime.now()
         hairpin_paired = options.hairpin_paired
-        hairpin_recovery_files = recover(os.path.join(reads1), os.path.join(reads2), tmpDir, gzip_switch)
+        additional_parameters[Constants.HAIRPIN_PAIRED] = hairpin_paired
+        hairpin_recovery_files = recover(os.path.join(reads1), os.path.join(reads2), tmpDir, gzip_switch, start, end)
         (R_filename, CT_filename, GA_filename, post_filename) = hairpin_recovery_files
         if keep_sam:
             list_of_temp_files += hairpin_recovery_files[1:3]
@@ -679,16 +695,13 @@ def main():
     pool.terminate()
     pool = None
     post_now = datetime.datetime.now()
-    useSecondaryIndexes = False
-    if options.secondaryIndexes != None and options.mainIndexes != None:
-        useSecondaryIndexes = True
     read_files = {
                   Constants.FASTA: fastafile,
-                  Constants.BISFAST_CUTOFF_BS: cutoff_bs, 
-                  Constants.BISFAST_CUTOFF_R: cutoff_r,
-                  Constants.BISFAST_READS1: reads1,
-                  Constants.BISFAST_READS2: reads2,
-                  Constants.BISFAST_RESCORE_MATRIX: rescore_matrix,
+                  Constants.BISPIN_CUTOFF_BS: cutoff_bs, 
+                  Constants.BISPIN_CUTOFF_R: cutoff_r,
+                  Constants.BISPIN_READS1: reads1,
+                  Constants.BISPIN_READS2: reads2,
+                  Constants.BISPIN_RESCORE_MATRIX: rescore_matrix,
                   Constants.GZIP: gzip_switch,
                   Constants.STARTREADNUM : start,
                   Constants.ENDREADNUM : end,

@@ -2,9 +2,9 @@
 import datetime
 import sys
 import optparse
-import IndentedHelpFormatterWithNL
-import SeqIterator
-import Constants
+from Utilities import IndentedHelpFormatterWithNL
+from Utilities import SeqIterator
+from Utilities import Constants
 
 """
 @author: Jacob Porter
@@ -23,16 +23,16 @@ def extract(sam_file, output_file):
     last_record = []
     for record in sam_input:
         if record[Constants.SAM_KEY_FLAG] == Constants.SAM_VALUE_UNMAPPED:
-            last_record = writeOut(last_record, output_unique, output_ambig)
+            last_record = writeTo(last_record, output_unique, output_ambig)
             output_unmap.write(record)
         elif len(last_record) >= 1 and record[Constants.SAM_KEY_QNAME] != last_record[0][Constants.SAM_KEY_QNAME]:
-            last_record = writeOut(last_record, output_unique, output_ambig)
+            last_record = writeTo(last_record, output_unique, output_ambig)
             last_record.append(record)
         else:
             last_record.append(record)
-    writeOut(last_record, output_unique, output_ambig)
+    writeTo(last_record, output_unique, output_ambig)
                     
-def writeOut(last_record, output_unique, output_ambig):
+def writeTo(last_record, output_unique, output_ambig):
     if len(last_record) == 1:
         output_unique.write(last_record[0])
     elif len(last_record) > 1:

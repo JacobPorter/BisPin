@@ -30,8 +30,8 @@ def extractPairedID(original_id1, original_id2):
         return original_id1
     else:
         new_id = "".join(a for a, b in zip(original_id1, original_id2) if a == b)
-        if new_id == "":
-            raise ValueError("The paired end sequences ids did not overlap.  The FASTQ ids for paired end data should be in the same order and should have similar ids: " + original_id1 + " and " + original_id2)
+#         if new_id == "":
+#             raise ValueError("The paired end sequences ids did not overlap.  The FASTQ ids for paired end data should be in the same order and should have similar ids: " + original_id1 + " and " + original_id2)
         return new_id
         
 

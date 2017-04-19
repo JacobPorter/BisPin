@@ -1,6 +1,6 @@
 """
 @author: Jacob Porter
-@summary: This file stores constants and defaults for BisFAST.
+@summary: This file stores constants and defaults for BisPin.
 """
 
 #File type constants
@@ -77,7 +77,7 @@ SAM_VALUE_FILTERED = "512"
 SAM_VALUE_SECONDARY = 256
 SAM_VALUE_STAR = "*"
 SAM_VALUE_ZERO = "0"
-SAM_VALUE_PROGRAM = "BisFAST"
+SAM_VALUE_PROGRAM = "BisPin"
 SAM_VALUE_BFAST_UNMAPPED_SCORE = "-2147483648"
 
 #Record write type for postprocessing the SAM file
@@ -103,13 +103,13 @@ PROTOCOL_ONLYCT = 4
 PROTOCOL_ONLYGA = 5
 
 #Post process argument names:
-BISFAST_READS1 = "READS1"
-BISFAST_READS2 = "READS2"
-BISFAST_CUTOFF_BS = "CutoffBS"
-BISFAST_CUTOFF_R = "CutoffR"
-BISFAST_AREADS = "AREADS"
-BISFAST_TREADS = "TREADS"
-BISFAST_RESCORE_MATRIX = "Matrix"
+BISPIN_READS1 = "READS1"
+BISPIN_READS2 = "READS2"
+BISPIN_CUTOFF_BS = "CutoffBS"
+BISPIN_CUTOFF_R = "CutoffR"
+BISPIN_AREADS = "AREADS"
+BISPIN_TREADS = "TREADS"
+BISPIN_RESCORE_MATRIX = "Matrix"
 
 #Cigar Token Strings
 CIGAR_I = "I"
@@ -137,11 +137,11 @@ GAP_EXTENSION = -30
 
 #The prefix for the alignment scoring function file name
 ALIGNFILENAME = 'alignment_scoring_function_'
-HAIRPINFILEPREFIX = "BisFAST.hairpin."
+HAIRPINFILEPREFIX = "BisPin.hairpin."
 
 #Score filter threshold values
-BISFAST_DEFAULT_CUTOFF_BS = 45
-BISFAST_DEFAULT_CUTOFF_R = 40
+BISPIN_DEFAULT_CUTOFF_BS = 45
+BISPIN_DEFAULT_CUTOFF_R = 40
 
 #Rescoring function
 #(F Chiaromonte, VB Yap, W Miller, PSB 2002:115-126). blastz default matrix
@@ -159,7 +159,7 @@ N -100 -100 -100 -100 100
 -30, -30 """
 
 #Amount of random characters to create for the filename of a temporary file
-BISFAST_RANDOM_LENGTH = 10
+BISPIN_RANDOM_LENGTH = 10
 
 #File input convenience features and BFAST parameter names
 GZIP = "GZIP"
@@ -180,3 +180,4 @@ USESECONDARYINDEXES = "use_secondary_indexes"
 PAIREDEXPRESSION = "PAIREDEXPRESSION"
 HAIRPINPOSTFILE = "HAIRPINPOSTFILE"
 REMOVECOMMENTS = "REMOVECOMMENTS"
+HAIRPIN_PAIRED = "Hairpin_Paired"
