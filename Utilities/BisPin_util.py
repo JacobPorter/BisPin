@@ -2,6 +2,7 @@ import os
 import math
 import datetime
 import gzip
+import sys
 from Utilities import SeqIterator
 from Utilities import Constants
 #from Utilities import Deprecator
@@ -225,8 +226,8 @@ def averagePhredCharacter(c1, c2, offset = 33):
     return chr(q+offset)
 
 
-def convert_seqs(directory, filename, CTorGA, tmpDir = None, file_type = Constants.FASTA, 
-                 start = None, end = None, gzip_switch = False, outputfile = None, reverse = False):
+def convert_seqs(directory, filename, CTorGA, tmpDir = None, file_type = Constants.FASTA,
+                 start = None, end = None, gzip_switch = False, checkLength = True, outputfile = None, reverse = False):
     """
     Does the C to T or the G to A conversion of DNA sequences.
     @param directory: A directory where the file to convert will be found.
@@ -256,6 +257,9 @@ def convert_seqs(directory, filename, CTorGA, tmpDir = None, file_type = Constan
         if (start != None and counter < start) or (end != None and counter > end):
             continue
         my_seq = rec[1]
+        if checkLength and len(my_seq) == 0:
+            sys.stderr.write("A sequence was found of length 0:\t%s\n" % (str(rec)))
+            continue
         new_seq = ""
         for base in my_seq:
             if CTorGA:

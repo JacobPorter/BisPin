@@ -365,7 +365,8 @@ def main():
     protocol_group.add_option('--insertSizeStdDev', '-d', help='Specifies the standard deviation of the insert size to use when pairing', default=None)
     p.add_option_group(protocol_group)
     file_group = optparse.OptionGroup(p, "File management options.")
-    file_group.add_option('--path', '-P', help='The path to the BFAST executable file.  If this option is not used, then the PATH variable will be searched for the executable.', default = None)
+    file_group.add_option('--path', '-P', help='The path to the BFAST (or BFAST-Gap) executable file.  If this option is not used, then the PATH variable will be searched for the executable.', default = None)
+    file_group.add_option('--bfast_gap', '-g', help='Use the BFAST-Gap executable in the system PATH variable.', action='store_true', default=False)
     file_group.add_option('--tmpDir','-T',help='Specifies the directory to store temporary files. [default: the directory where the outputfile is located.]', default = None)
     file_group.add_option('--keep_sam', '-k', help='When this flag is set, the raw SAM files created by BFAST are kept in the temporary directory. [default: %default]', action='store_true', default=False)
     file_group.add_option('--gzip', '-z', help='The input file is gzip compressed, and the output file will be gzip compressed. [default: %default]', action='store_true', default=False)
@@ -393,15 +394,16 @@ def main():
     alignment_score_group.add_option('--gap_extension', '', help='The gap extension penalty for scoring an alignment. [default: %default]', default = Constants.GAP_EXTENSION)
     alignment_score_group.add_option('--match_score', '', help='The score value for a matching base for scoring an alignment. [default: %default]', default = Constants.MATCH_SCORE)
     alignment_score_group.add_option('--mismatch_score', '', help='The base mismatch penalty for scoring an alignment. [default: %default]', default = Constants.MISMATCH_SCORE)
+    alignment_score_group.add_option('--scoringMatrixFileName', '-x', help='The alignment scoring function can be specified in this file in the format that BFAST uses.  If this is not specified then the alignment score function specified in the command line will be used. [default: %default]', default = None)
     p.add_option_group(alignment_score_group)
     filter_group = optparse.OptionGroup(p, "Filter Options", "Specify the function for filtering out low quality alignments and reporting the reads as unmapped.")
-    filter_group.add_option('--cutoff_bs', '-m', help='Function for filtering low quality alignments for bisulfite treated reads. [default: %default]', default=Constants.BISPIN_DEFAULT_CUTOFF_BS)
+    filter_group.add_option('--cutoff_bs', '-b', help='Function for filtering low quality alignments for bisulfite treated reads. [default: %default]', default=Constants.BISPIN_DEFAULT_CUTOFF_BS)
     filter_group.add_option('--cutoff_r', '-r', help='Function for filtering low quality alignments for recovered reads.  This is for hairpin data only. [default: %default]', default=Constants.BISPIN_DEFAULT_CUTOFF_R)
     p.add_option_group(filter_group)
     rescore_group = optparse.OptionGroup(p, "Rescore Options", "Ambiguously aligned reads can be rescored to see if one will be unique.")
     rescore_group.add_option('--noRescore', '-N', help='Do NOT rescore ambiguously aligned reads to find unique alignments. [default: %default]', action='store_true', default = False)
-    rescore_group.add_option('--rescore_matrix_1', '-x', help='The location of the rescoring matrix used to rescore ambiguously aligned reads for a unique score.  If the second rescoring matrix is specified, it is assumed that this rescoring matrix will be for C to T methylation rescoring. The default is:\n' + Constants.RESCORE_DEFAULT, default=None)
-    rescore_group.add_option('--rescore_matrix_2', '-X', help='The location of the rescoring matrix used to rescore ambiguously aligned reads for G to A methylation rescoring for a unique score.  [default: %default]', default=None)
+    rescore_group.add_option('--rescore_matrix_1', '-m', help='The location of the rescoring matrix used to rescore ambiguously aligned reads for a unique score.  If the second rescoring matrix is specified, it is assumed that this rescoring matrix will be for C to T methylation rescoring. The default is:\n' + Constants.RESCORE_DEFAULT, default=None)
+    rescore_group.add_option('--rescore_matrix_2', '-M', help='The location of the rescoring matrix used to rescore ambiguously aligned reads for G to A methylation rescoring for a unique score.  [default: %default]', default=None)
     p.add_option_group(rescore_group)
     options, args = p.parse_args()
     if len(args) == 0:
@@ -430,9 +432,12 @@ def main():
         p.error("The folder for the output is invalid.  Please check the input string.")
     filename = os.path.basename(fastafile)
     directory = os.path.dirname(fastafile)
-    if options.path == None:
+    path_to_bfast = None
+    if options.path == None and not options.bfast_gap:
         path_to_bfast = BisPin_util.which("bfast")
-    else:
+    elif options.path == None and options.bfast_gap:
+        path_to_bfast = BisPin_util.which("bfast-gap")
+    if path_to_bfast == None:
         path_to_bfast = BisPin_util.which(options.path)
     if path_to_bfast == None:
         p.error("The BFAST executable could not be found.  Please check the path.")
@@ -462,11 +467,12 @@ def main():
         cutoff_r = float(options.cutoff_r)
     except ValueError:
         p.error("There was a problem in creating the filter cutoff values.")
-    scoring_file = createAlignmentScoringFunctionFile(tmpDir,  
-                                                      options.gap_open, 
-                                                      options.gap_extension, 
-                                                      options.match_score, 
-                                                      options.mismatch_score)
+    if (options.scoringMatrixFileName == None):
+        scoring_file = createAlignmentScoringFunctionFile(tmpDir,options.gap_open,options.gap_extension,options.match_score,options.mismatch_score)
+    else:
+        scoring_file = os.path.join(options.scoringMatrixFileName)
+        if not os.path.exists(scoring_file):
+            p.error("The specified scoring file %s does not exist.  Please check." % str(scoring_file))
     if (input_protocol == Constants.PROTOCOL_HAIRPIN or layout == Constants.LAYOUT_PAIRED) and (reads2 == None):
         p.error('The input protocol given needs two reads files, but only one was given.')
     start = None if options.startReadNum == None else int(options.startReadNum)
@@ -684,7 +690,8 @@ def main():
         if keep_sam:
             process_files = process_files[1:len(process_files)]
         list_of_temp_files += process_files
-    list_of_temp_files.append(scoring_file)
+    if options.scoringMatrixFileName == None:
+        list_of_temp_files.append(scoring_file)
     if keep_sam and input_protocol == Constants.PROTOCOL_HAIRPIN:
             sam_files_list.append(post_filename)
     elif not keep_sam and input_protocol == Constants.PROTOCOL_HAIRPIN:

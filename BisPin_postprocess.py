@@ -29,6 +29,11 @@ TODO: The program barfs on the multiple index functionality when using a partiti
 TODO: Test the new rescoring functionality for positive C to T matrix scores.
 TODO: Does the rescoring correctly score for the right direction when it looks at methylation calls?
 TODO: Hairpin recovered methylation calling statistics are substantially different compared to not using recovery.  This could be a bug.  
+TODO: Using BFAST-Gap there is sometimes a read that cannot be found in the alignmments file.  This could be because of multiple indexes. Currently, BisPin skips past records that it cannot find.
+TODO: Perhaps the secondary index functionality should always be used in case there are missing or out of order records
+TODO: When a deletion occurs before an insertion, the length of the deletion is shorter in the CIGAR string compared to the MD tag string.  
+This occurs rarely with BFAST-Gap with the logistic and exponential settings.  It is unclear if this is related to the changes in BFAST-Gap or if it is a rare bug in BFAST.  The bug is not always present.
+Looking at some examples, it makes more sense to prefer a shorter deletion (by one) since this will result in fewer downstream mismatches and a higher score. The CIGAR string is correct, but the MD tag is not.
 """
 
 logstr = "\nBisPin_postprocess: "
@@ -208,8 +213,13 @@ def selectBestAlignmentAndPostProcessSAMRecord(sam_files_list, pool, input_proto
                         try:
                             sam_iterator_dictionary2[key].next()
                         except StopIteration as si:
+                            #If this happens, something is wrong, and the SAM record was not found in the BFAST file.
+                            #This could be a bug in BFAST-Gap.
                             sys.stderr.write("The alignment key %s for file type %s could not be found, and the end of the second iterator was reached.\n" % (str(alignement_key), str(key)) )
-                            raise si
+                            next_Id = None
+                            sam_iterator_dictionary2[key].reset()
+                            break
+                            #raise si
             #while(alignement_key == sam_iterator_dictionary[key].peekAtId()):
             while(next_Id != None and alignement_key == next_Id):
                 if in_alternate_file:
@@ -457,7 +467,7 @@ def computeWriteRecord(meilleur_alignement_dictionnaire, empty, record1, record2
     """
     ambiguous_uniquified = 0
     direction_id = None
-    if empty: #An unmapped SAM record will be written if the FASTQ record could not be found in the SAM file.  This shouldn't happen.
+    if empty: #An unmapped SAM record will be written if the FASTQ record could not be found in the SAM file.  This shouldn't happen, but it probably will.
         write_record = (Constants.SAM_WRITE_UNMAPPED, [[BisPin_util.changeFastqRecordToSAMRecord(record1, seq_id = alignement_key)]])
         if record2 != None:
             write_pair = BisPin_util.changeFastqRecordToSAMRecord(record2, seq_id = alignement_key)
@@ -980,6 +990,37 @@ def makeReferenceGenomeDictionary(reference_genome_file_location):
     return (genome_dictionary, id_length_list, later - now)
 
 
+def checkDeletionInsertionProblem(token_cigar, token_md):
+    """
+    This functions checks that the length of any deletion in the token md list is the 
+    same as the length of the deletion in the cigar list.  The MD list is corrected if 
+    there is a discrepancy.  This hacks a solution to a bug encountered in BFAST-Gap.
+    @param token_cigar: The token list representing the cigar string 
+    @param param: The The token list representing the cigar string
+    @return A token cigar list followed by a corrected token md list
+    """
+    differences = []
+    start = 0
+    for i in range(len(token_cigar)):
+        if token_cigar[i][1] == 'D':
+            for j in range(start, len(token_md)):
+                if str(token_md[j]).startswith('^') and int(token_cigar[i][0]) != len(token_md[j]) - 1:
+                    differences.append((int(token_cigar[i][0]), j))
+                elif str(token_md[j]).startswith('^'):
+                    start = j + 1
+                    break
+    for diff in differences:
+        i,j = diff
+        token_md[j] = token_md[j][0:i + 1]
+        if j+1 >= len(token_md):
+            token_md.append(1)
+        elif isinstance(token_md[j+1], int):
+            token_md[j+1] += 1
+        else:
+            token_md.insert(j+1, 1)
+    return (token_cigar, token_md)
+
+
 def makeMismatchString(bisulfite_sequence, alignement_record, reference_sequence, cigar, md, printOut = False):
     """
     @param bisulfite_sequence: is the unconverted short read
@@ -993,10 +1034,11 @@ def makeMismatchString(bisulfite_sequence, alignement_record, reference_sequence
     """
     converted_sequence = alignement_record[Constants.SAM_KEY_SEQ]
     if len(converted_sequence) != len(bisulfite_sequence):
-        sys.stderr.write(logstr + "makeMismatchString: Lengths of converted sequence and bisulfite sequence do not match", 
-        alignement_record, bisulfite_sequence)
+        sys.stderr.write("%smakeMismatchString: Lengths of converted sequence and bisulfite sequence do not match.\nAlignment Record:\t%s\nInput FASTQ Record:\t%s\n" %
+        (logstr, str(alignement_record), str(bisulfite_sequence)))
     token_cigar = BisPin_util.tokenizeCigar(cigar) if isinstance(cigar, basestring) else cigar
     token_md = BisPin_util.tokenizeMDtag(md) if isinstance(md, basestring) else md
+    token_cigar, token_md = checkDeletionInsertionProblem(token_cigar, token_md)
     deletions_list = BisPin_util.findDeletions(token_cigar, token_md, reference_sequence)
     if printOut:
         sys.stderr.write(logstr + deletions_list + "\n")
@@ -1038,14 +1080,14 @@ def makeMismatchString(bisulfite_sequence, alignement_record, reference_sequence
             try:
                 bisulfite_char = bisulfite_sequence[bisulfite_index]
             except IndexError:
-                error_string = "****BSSEQ_ERROR*****\nbisulfite_sequence:\t%s\nreference_sequence:\t%s\nindex:\t%s\ncigar:\t%s\nmd:\t%s\nMI_string:\t%s\nlen(MI_string):\t%s\nalignement_record:\t%s\n****ERROR*****\n" % (str(bisulfite_sequence), str(reference_sequence), str(index), str(cigar), str(md), str(MI_string), str(len(MI_string)), str(alignement_record))
+                error_string = "****BSSEQ_ERROR*****\nbisulfite_sequence:\t%s\nreference_sequence:\t%s\nindex:\t%s\ncigar:\t%s\nmd:\t%s\nMI_string:\t%s\nlen(MI_string):\t%s\nalignement_record:\t%s\nbisulfite_index:\t%s\n****ERROR*****\n" % (str(bisulfite_sequence), str(reference_sequence), str(index), str(cigar), str(md), str(MI_string), str(len(MI_string)), str(alignement_record), str(bisulfite_index))
                 sys.stderr.write(logstr + error_string + "\n")
                 sys.stderr.flush()
                 raise
             try:
                 reference_char = reference_sequence[reference_index]
             except IndexError:
-                error_string = "****REFSEQ_ERROR*****\nbisulfite_sequence:\t%s\nreference_sequence:\t%s\nindex:\t%s\ncigar:\t%s\nmd:\t%s\nMI_string:\t%s\nlen(MI_string):\t%s\nalignement_record:\t%s\n****ERROR*****\n" % (str(bisulfite_sequence), str(reference_sequence), str(index), str(cigar), str(md), str(MI_string), str(len(MI_string)), str(alignement_record))
+                error_string = "****REFSEQ_ERROR*****\nbisulfite_sequence:\t%s\nreference_sequence:\t%s\nindex:\t%s\ncigar:\t%s\nmd:\t%s\nMI_string:\t%s\nlen(MI_string):\t%s\nalignement_record:\t%s\nreference_index:\t%s\n****ERROR*****\n" % (str(bisulfite_sequence), str(reference_sequence), str(index), str(cigar), str(md), str(MI_string), str(len(MI_string)), str(alignement_record), str(reference_index))
                 sys.stderr.write(logstr + error_string + "\n")
                 sys.stderr.flush()
                 raise
@@ -1518,7 +1560,7 @@ def main():
     now = datetime.datetime.now()
     usage = "usage: %prog [options] <reference_genome_file> <sam_input_directory> <output_file> { <reads1> <reads2> | <reads> }"
     version = "%prog " + Constants.version
-    description = "This program postprocesses SAM files for bisulfite treatment.  The SAM files in the <sam_input_directory> need to have the string CT_CT or CT_GA or GA_CT or GA_GA in their name for correct processing, and they must end '.sam'.  The <output_file> is the SAM will where the results will be written to.  It will be used as a prefix to write an alignment report file.  Two reads files are specified for hairpin and paired end data in <reads1> and <reads2>, but single end data uses one file <reads>.  The T-enriched file is the first file and the A-enriched file is the second file."
+    description = "This program postprocesses SAM files for bisulfite treatment.  The SAM files in the <sam_input_directory> need to have the string CT_CT or CT_GA or GA_CT or GA_GA in their name for correct processing, and they must end '.sam'.  The <output_file> is the SAM file where the results will be written to.  It will be used as a prefix to write an alignment report file.  Two reads files are specified for hairpin and paired end data in <reads1> and <reads2>, but single end data uses one file <reads>.  The T-enriched file is the first file and the A-enriched file is the second file."
     epilog = Constants.creation_string
     p = optparse.OptionParser(usage = usage, 
                               version = version, 
@@ -1540,7 +1582,7 @@ def main():
     p.add_option('--multiProcessPost', '-W', help='Use multiple processes for post processing.  This multiprocessing uses six processes, so this switch should only be engaged if the machine has six or more cores.', action = 'store_true', default = False)
     p.add_option('--useSecondaryIndexes', '-i', help = "Turn this flag on if the SAM files were created with secondary indexes." , action='store_true', default=False)
     filter_group = optparse.OptionGroup(p, "Filter Options", "Specify the function for filtering out low quality alignments and reporting the reads as unmapped.")
-    filter_group.add_option('--cutoff_bs', '-m', help='Function for filtering low quality alignments for bisulfite treated reads. [default: %default]', default=Constants.BISPIN_DEFAULT_CUTOFF_BS)
+    filter_group.add_option('--cutoff_bs', '-b', help='Function for filtering low quality alignments for bisulfite treated reads. [default: %default]', default=Constants.BISPIN_DEFAULT_CUTOFF_BS)
     filter_group.add_option('--cutoff_r', '-r', help='Function for filtering low quality alignments for recovered reads.  This is for hairpin data only. [default: %default]', default=Constants.BISPIN_DEFAULT_CUTOFF_R)
     p.add_option_group(filter_group)
     rescore_group = optparse.OptionGroup(p, "Rescore Options", "Ambiguously aligned reads can be rescored to see if one will be unique.")
@@ -1570,6 +1612,10 @@ def main():
     if len(args) == 5:
         reads2 = args[4]
         layout = Constants.LAYOUT_PAIRED
+    start = None if options.startReadNum == None else int(options.startReadNum)
+    end = None if options.endReadNum == None else int(options.endReadNum)
+    if (start != None or end != None) and input_protocol == Constants.PROTOCOL_HAIRPIN and options.useSecondaryIndexes == True:
+        p.error("The partitioning feature for the hairpin protocol is not supported at this time for secondary indexes.  The Linux head and tail commands can be used to partition data.")
     postprocess_arguments = {Constants.FASTA: args[0],
                              Constants.BISPIN_READS1: args[3], 
                              Constants.BISPIN_READS2: reads2,
@@ -1577,8 +1623,8 @@ def main():
                              Constants.BISPIN_CUTOFF_R: cutoff_r,
                              Constants.BISPIN_RESCORE_MATRIX: rescore_matrix,
                              Constants.GZIP: options.gzip,
-                             Constants.STARTREADNUM: None if options.startReadNum == None else int(options.startReadNum),
-                             Constants.ENDREADNUM: None if options.endReadNum == None else int(options.endReadNum),
+                             Constants.STARTREADNUM: start,
+                             Constants.ENDREADNUM: end,
                              Constants.SINGLEPROCESSPOST : not options.multiProcessPost,
                              Constants.USESECONDARYINDEXES : options.useSecondaryIndexes,
                              Constants.REMOVECOMMENTS : options.removeComments,

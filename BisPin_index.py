@@ -102,7 +102,7 @@ def main():
     p.add_option('--sequential', '-s', help='Create the indices for the converted reference genome in sequence instead of in parallel. [default: %default]', action='store_true', default=False)
     bfast_group = optparse.OptionGroup(p, "BFAST index options.")
     bfast_group.add_option('--mask', '-m', help='The mask or spaced seed to use. The mask is a set of zero and ones (must start and end with a one). [default: %default]', default = '11111111111111111111')
-    bfast_group.add_option('--hashWidth', '-w', help='The hash width for the index. A hash is used as an index into the index but at the cost of increasing the size of the index. [default: %default]', default = 14)
+    bfast_group.add_option('--hashWidth', '-w', help='The length of the hashed string (key size for the hash index). This must be less than or equal to the number of ones in the mask. [default: %default]', default = 14)
     bfast_group.add_option('--indexNumber', '-i', help='Specifies this is the ith index you are creating. This is useful when multiple indexes from the same reference are to be created (in the same space). [default: %default]', default='1')
     #p.add_option('--num_threads', '-n', help='The number of threads for each BFAST process to use. [default: %default]', default='1')
     #p.add_option('--depth' , '-d', help= 'The depth of splitting (d).  The index will be split into 4^d parts. [default: %default]', default='0')

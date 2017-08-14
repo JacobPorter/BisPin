@@ -20,17 +20,20 @@ def isFiltered(flag):
 def isProper(flag):
     return ((int(flag) >> 1) % 2) == 1
 
-def processSAM(SAM_file, gzip_switch, bound, paired_end):
+def processSAM(SAM_file, gzip_switch, bound, paired_end, dwgsim, print_value = 10):
     sam_iterator = SeqIterator.SeqIterator(SAM_file, file_type = Constants.SAM, gzip_switch = gzip_switch)
     counter_dict = {"Total_SAM_Records" : 0, "Records_Analyzed" : 0, "Correct" : 0, "Incorrect" : 0, "Unmap/Filter" : 0, "Improper" : 0} #"FP" : 0, "FN" : 0, "TP" : 0, "TN" : 0,
     record_dict = sam_iterator.convertToDict("R1", "R2")
     counter_dict["Total_SAM_Records"] = sam_iterator.records_processed()
     counter = 0
     for key in record_dict.keys():
-        if counter < 10:
+        if counter < print_value:
             sys.stderr.write("%s\n" % str(record_dict[key]))
             counter += 1
-        if not paired_end and (len(record_dict[key]) > 1 or "XA:Z" in record_dict[key][0]):
+        if dwgsim and key.startswith("rand_"):
+            continue
+        if not paired_end and ((len(record_dict[key]) > 1 or "XA:Z" in record_dict[key][0])):
+            #sys.stderr.write("Got here:\t%s\t%s\t%s\n" % (key, str(len(record_dict[key])), str("XA:Z" in record_dict[key][0])))
 #             if counter <= 10:
 #                 print "0"
             continue
@@ -43,7 +46,7 @@ def processSAM(SAM_file, gzip_switch, bound, paired_end):
 #             if counter <= 10:
 #                 print "2"
             continue 
-        if paired_end and ("XA:Z" in record_dict[key][0] or "XA:Z" in record_dict[key][1]):
+        if paired_end and (("XA:Z" in record_dict[key][0] or "XA:Z" in record_dict[key][1])):
 #             if counter <= 10:
 #                 print "3"
             continue
@@ -54,22 +57,28 @@ def processSAM(SAM_file, gzip_switch, bound, paired_end):
             continue
         counter_dict["Records_Analyzed"] += 1
         SAM_record = record_dict[key][0]
-        QNAME = re.split('_|:|-', SAM_record[Constants.SAM_KEY_QNAME])
-        REAL_POS = int(QNAME[2])
+        QNAME = re.split('_|:|-', SAM_record[Constants.SAM_KEY_QNAME].replace('@', ''))
+        if not dwgsim:
+            QNAME = QNAME[1:len(QNAME)]
+        REAL_POS = int(QNAME[1]) # For DWGSIM, the real position is at index 1
+        REAL_POS2 = int(QNAME[2])
         RNAME = SAM_record[Constants.SAM_KEY_RNAME]
         TEST_POS = int(SAM_record[Constants.SAM_KEY_POS])
+        TEST_POS2 = TEST_POS + len(SAM_record[Constants.SAM_KEY_SEQ]) - 1
         REAL_POS_u = REAL_POS + bound
         REAL_POS_l = REAL_POS - bound
+        REAL_POS2_u = REAL_POS2 + bound
+        REAL_POS2_l = REAL_POS2 - bound
         if paired_end:
             SAM_record2 = record_dict[key][1]
             RNAME2 = SAM_record2[Constants.SAM_KEY_RNAME]
             TEST_POS2 = int(SAM_record2[Constants.SAM_KEY_POS])
-        if not paired_end and QNAME[1] == RNAME and  TEST_POS <= REAL_POS_u and TEST_POS >= REAL_POS_l:
+        if not paired_end and QNAME[0] == RNAME and ( (not dwgsim and ((TEST_POS <= REAL_POS_u and TEST_POS >= REAL_POS_l) or (TEST_POS2  <= REAL_POS2_u and TEST_POS2 >= REAL_POS2_l))) or (dwgsim and ((TEST_POS <= REAL_POS_u and TEST_POS >= REAL_POS_l) or (TEST_POS <= REAL_POS2_u and TEST_POS >= REAL_POS2_l)) ) ):
             counter_dict["Correct"] += 1
         elif not paired_end:
             counter_dict["Incorrect"] += 1
-        if paired_end and ((QNAME[1] == RNAME and TEST_POS <= REAL_POS_u and TEST_POS >= REAL_POS_l) or 
-                           (QNAME[1] == RNAME2 and  TEST_POS2 <= REAL_POS_u and TEST_POS2 >= REAL_POS_l)):
+        if paired_end and ((QNAME[0] == RNAME and TEST_POS <= REAL_POS_u and TEST_POS >= REAL_POS_l) or 
+                           (QNAME[0] == RNAME2 and  TEST_POS2 <= REAL_POS_u and TEST_POS2 >= REAL_POS_l)):
             counter_dict["Correct"] += 1
         elif paired_end:
             counter_dict["Incorrect"] += 1
@@ -108,17 +117,24 @@ def main():
     usage = "usage: %prog [options] <sam_file> <total_reads>"
     description = ""
     p = optparse.OptionParser(usage = usage, description = description)
+    p.add_option('--dwgsim', '-d', help='Use this flag when the simulation was done with DWGSIM.  Otherwise, the simulation is assumed to be done with Sherman. [default: %default]', action='store_true', default=False)
     p.add_option('--gzip', '-z', help='The input file is gzip compressed, and the output file will be gzip compressed. [default: %default]', action='store_true', default=False)
     p.add_option('--bound', '-b', help='The interval length above and below the correct location in the reference genome.  This determines how sensitive the calculation is to the correct location. [default: %default]', default = 3)
     p.add_option('--paired_end', '-p', help='Turn this on if the data is paired end data.', action='store_true', default=False)
     options, args = p.parse_args()
     if len(args) == 0:
         p.print_help()
+    if len(args) == 1:
+        p.error("There must be two arguments given, but only one was given.")
+    try:
+        total_reads = int(args[1])
+    except ValueError:
+        p.error("The second argument must be an integer.")
     if not os.path.exists(args[0]):
         p.error("The SAM file could not be found.")
-    counter_dict = processSAM(args[0], options.gzip, int(options.bound), options.paired_end)
+    counter_dict = processSAM(args[0], options.gzip, int(options.bound), options.paired_end, options.dwgsim)
     later = datetime.datetime.now()
-    report(counter_dict, options.paired_end, args[0], int(options.bound), int(args[1]), now, later)
+    report(counter_dict, options.paired_end, args[0], int(options.bound), total_reads, now, later)
     sys.stderr.write("%sThe process started at %s and took %s time.\n" % (logstr, str(now), str(later - now)))
 
 if __name__ == "__main__":

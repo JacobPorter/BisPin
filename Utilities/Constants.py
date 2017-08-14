@@ -13,7 +13,7 @@ BFAST = "BFAST"
 BWA = "BWA"
 
 #Program information
-version = '0.1.0'
+version = '0.1.1'
 creation_string = "Created by Jacob Porter at Virginia Tech.  www.jacobporter.com"
 
 #Read and reference conversion type combinations
@@ -50,7 +50,7 @@ SAM_KEY_PNEXT = "PNEXT"
 SAM_KEY_TLEN = "TLEN"
 SAM_KEY_SEQ = "SEQ"
 SAM_KEY_QUAL = "QUAL"
-SAM_KEY_ALIGNMENT_SCORE = "AS:i"
+SAM_KEY_ALIGNMENT_SCORE = "AS"
 SAM_KEY_MD = "MD:Z"
 SAM_KEY_PROGRAM = "PG:Z"
 SAM_KEY_DISTANCE = "NM:i"

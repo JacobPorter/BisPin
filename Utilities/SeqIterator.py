@@ -27,11 +27,11 @@ class SeqIterator:
             self.seq_file = open(file_name, 'r')
         self.next_line = self.seq_file.readline()
         self.file_type = file_type.lower()
-        if file_type=='fasta':
+        if self.file_type=='fasta':
             self.type=0
-        elif file_type=='fastq':
+        elif self.file_type=='fastq':
             self.type=1
-        elif file_type=='sam':
+        elif self.file_type=='sam':
             self.type=2
             nextline = self.next_line
             while nextline.startswith('@'):
@@ -91,7 +91,9 @@ class SeqIterator:
             sam_dictionary["QUAL"] = sam_list[10]
             for i in xrange(10,len(sam_list)):
                 if sam_list[i].startswith("AS:i"):
-                    sam_dictionary["AS:i"] = sam_list[i].strip("AS:i:")
+                    sam_dictionary[Constants.SAM_KEY_ALIGNMENT_SCORE] = sam_list[i].strip("AS:i:")
+                elif sam_list[i].startswith("AS:f"):
+                    sam_dictionary[Constants.SAM_KEY_ALIGNMENT_SCORE] = sam_list[i].strip("AS:f:")
                 elif sam_list[i].startswith("NM:i"):
                     sam_dictionary["NM:i"] = sam_list[i].strip("NM:i:")
                 elif sam_list[i].startswith("NH:i"):
@@ -159,7 +161,7 @@ class SeqIterator:
 class SeqWriter:
     
     sam_standard_fields = ["QNAME", "FLAG", "RNAME", "POS", "MAPQ", "CIGAR", "RNEXT", "PNEXT", "TLEN", "SEQ", "QUAL"]
-    bfast_fields = ["PG:Z", "AS:i", "NM:i", "NH:i", "IH:i", "HI:i", "MD:Z", "XA:i", "XR:Z", "XG:Z", "XM:Z", Constants.SAM_KEY_RECOVERED, Constants.SAM_KEY_RESCORE]
+    bfast_fields = ["PG:Z", Constants.SAM_KEY_ALIGNMENT_SCORE, "NM:i", "NH:i", "IH:i", "HI:i", "MD:Z", "XA:i", "XR:Z", "XG:Z", "XM:Z", Constants.SAM_KEY_RECOVERED, Constants.SAM_KEY_RESCORE]
     
     def __init__(self, seq_file, file_type='fasta', line_toggle=False, line_length=80):
         self.seq_file = seq_file
@@ -204,7 +206,10 @@ class SeqWriter:
                     line_string += seq[field] + "\t"
                 for field in seq: #Could use complementation on the list of keys instead
                     if field not in SeqWriter.sam_standard_fields:
-                        line_string += field + ":" + str(seq[field]) + "\t"
+                        value = str(seq[field])
+                        if (field == Constants.SAM_KEY_ALIGNMENT_SCORE):
+                            field = Constants.SAM_KEY_ALIGNMENT_SCORE + ":f"
+                        line_string += field + ":" + value + "\t"
                 self.seq_file.write(line_string + "\n")
             
     def close(self):

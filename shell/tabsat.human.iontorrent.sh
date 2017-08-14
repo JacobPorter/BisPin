@@ -1,0 +1,10 @@
+#!/bin/sh
+/home/jsporter/tabsat/tools/bismark_tmap/bismark --path_to_program ~/TMAP/ --temp_dir /research/jsporter/Data/output/Human/ --tmap -o /research/jsporter/Data/output/Human/tabsat/IonTorrent/ /research/jsporter/Data/genome/GRCh38.p9/tabsat/ /research/jsporter/Data/reads/Human/IonTorrent/SRR2842546.1mil.fastq &> /research/jsporter/Data/output/Human/tabsat/IonTorrent/tabsat.SRR2842546.1mil.out
+
+/home/jsporter/tabsat/tools/bismark_tmap/bismark --path_to_program ~/TMAP/ --temp_dir /research/jsporter/Data/output/Human/ --tmap -o /research/jsporter/Data/output/Human/tabsat/IonTorrent/ /research/jsporter/Data/genome/GRCh38.p9/tabsat/ /research/jsporter/Data/reads/Human/IonTorrent/SRR2842547.1mil.fastq &> /research/jsporter/Data/output/Human/tabsat/IonTorrent/tabsat.SRR2842547.1mil.out
+
+/home/jsporter/tabsat/tools/bismark_tmap/bismark --path_to_program ~/TMAP/ --temp_dir /research/jsporter/Data/output/Human/ --tmap -o /research/jsporter/Data/output/Human/tabsat/IonTorrent/ /research/jsporter/Data/genome/GRCh38.p9/tabsat/ /research/jsporter/Data/reads/Human/IonTorrent/SRR3305017.fastq &> /research/jsporter/Data/output/Human/tabsat/IonTorrent/tabsat.SRR3305017.out
+
+/home/jsporter/tabsat/tools/bismark_tmap/bismark --path_to_program ~/TMAP/ --temp_dir /research/jsporter/Data/output/Human/ --tmap -o /research/jsporter/Data/output/Human/tabsat/IonTorrent/Simulation/ /research/jsporter/Data/genome/GRCh38.p9/tabsat/ /research/jsporter/Data/reads/Human/IonTorrent/Simulation/reads.1m.dwgsim.human.ver0.1000024.fastq &> /research/jsporter/Data/output/Human/tabsat/IonTorrent/Simulation/tabsat.ver0.1000024.out
+
+/home/jsporter/tabsat/tools/bismark_tmap/bismark --path_to_program ~/TMAP/ --temp_dir /research/jsporter/Data/output/Human/ --tmap -o /research/jsporter/Data/output/Human/tabsat/IonTorrent/Simulation/ /research/jsporter/Data/genome/GRCh38.p9/tabsat/ /research/jsporter/Data/reads/Human/IonTorrent/Simulation/verJacob/reads.1mil.dwgsim.human.post.fastq &> /research/jsporter/Data/output/Human/tabsat/IonTorrent/Simulation/tabsat.ver1.verJacob.1mil.out
