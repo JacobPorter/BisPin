@@ -168,4 +168,18 @@ def extractWalt(file_location):
             value_dictionary["Unmap + Filt"] = splitWaltLine(line)[1]
     return value_dictionary
     
-    
+def extractHairpin(file_location):
+    fd = open(file_location, 'r')
+    value_dictionary = {}
+    fields = ["Hairpin_Hits", "Test_Ambig", "Test_Correct", "Test_Incorrect", "Test_NotFound", "Test_UnmapFilt"] 
+    for line in fd:
+        for field in fields:
+            if line.startswith(field):
+                value_dictionary[field] = line.strip().split("\t")[1:3]
+                break
+    return value_dictionary
+     
+     
+     
+     
+     

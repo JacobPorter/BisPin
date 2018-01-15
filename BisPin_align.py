@@ -23,6 +23,7 @@ from Utilities import Constants
 @summary: Aligns bisulfite-treated reads from a FASTQ file to a reference genome FASTA file with BFAST.
 @requires:  The indices must already be created. 
 TODO: add support for input file partitioning to the hairpin recovery processing with multiple indexes and parallel postprocessing.
+TODO: For BFAST-Gap, the initialization values for the Smith-Waterman matrix are not using the gap open / extension run length weights but are using the default values.
 """
 
 logstr = "\nBisPin_align: "

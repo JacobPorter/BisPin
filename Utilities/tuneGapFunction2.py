@@ -7,6 +7,20 @@ import sys
 import multiprocessing
 import shutil
 
+"""
+A file for processing failed BisPin with BFAST-Gap tuning because of missing SAM records.
+"""
+
+def deleteAllFiles(a_directory):
+    if os.path.exists(a_directory):
+        onlyfiles = [f for f in os.listdir(a_directory) if os.path.isfile(os.path.join(a_directory, f))]
+        for f in onlyfiles:
+            try:
+                os.remove(os.path.join(a_directory, f))
+            except OSError:
+                pass
+    return
+
 def runBisPinCalculate(scoring_filename, num_threads, reference_genome_file, output_file, reads, total_reads, function_string, fstring_middle):
     outdir = os.path.dirname(output_file)
     if not os.path.exists(outdir):
@@ -19,29 +33,35 @@ def runBisPinCalculate(scoring_filename, num_threads, reference_genome_file, out
     if not os.path.exists(outdir_sink):
         os.makedirs(outdir_sink)
     num_processes = num_threads * 2
-    BisPin_arguments = ["BisPin_align.py", "-i", "2", "-x", scoring_filename, "-g", "-k", "-n", str(num_threads), "-b", "-1000", "-N", reference_genome_file, output_file, reads]
-    subprocess.call(BisPin_arguments, stdout = open(os.path.join(output_file + ".BisPin.out"), 'w'), stderr = open(os.path.join(output_file + ".BisPin.err"), 'w'))
-    onlyfiles = [f for f in os.listdir(outdir) if os.path.isfile(os.path.join(outdir, f)) if ".a4." in f and ".sam" in f]
-    for f in onlyfiles:
-        shutil.copy2(os.path.join(outdir, f), os.path.join(outdir_source, f))
-    onlyfiles = [f for f in os.listdir(outdir) if os.path.isfile(os.path.join(outdir, f)) if ".sam" in f]
-    for f in onlyfiles:
-        subprocess.Popen(["gzip", os.path.join(outdir, f)])
-    calculateArguments = ["calculateAUCForBFAST_GAP.py", "-b", "0", "-e", "97", "-s", "1", "-o", outdir_sink, "-p", str(num_processes), reference_genome_file, outdir_source, reads, str(total_reads)]
-    subprocess.call(calculateArguments, stdout = open(os.path.join(outdir_AUC, "AUC." + function_string + ".csv"), 'w'), stderr = open(os.path.join(outdir_AUC, "AUC." + function_string + ".err"), 'w' ))
-    subprocess.Popen(["gzip", "-r", outdir_sink])
-    if os.path.exists(outdir_source):
-        onlyfiles = [f for f in os.listdir(outdir_source) if os.path.isfile(os.path.join(outdir_source, f))]
+    report_files = [f for f in os.listdir(outdir) if os.path.isfile(os.path.join(outdir, f)) if ".BisPin.report" in f]
+    if len(report_files) > 1:
+        sys.stderr.write("A report file was found for:\t%s\n" % fstring_middle) #Won't show up for the subprocess.
+        sys.stderr.flush()
+        return fstring_middle
+    else:
+        sys.stderr.write("A report file was NOT found for:\t%s\n" % fstring_middle)
+        sys.stderr.flush()
+        #BisPin_arguments = ["BisPin_align.py", "-i", "2", "-x", scoring_filename, "-g", "-k", "-n", str(num_threads), "-b", "-1000", "-N", reference_genome_file, output_file, reads]
+        #subprocess.call(BisPin_arguments, stdout = open(os.path.join(output_file + ".BisPin.out"), 'w'), stderr = open(os.path.join(output_file + ".BisPin.err"), 'w'))
+        deleteAllFiles(outdir_AUC)
+        deleteAllFiles(outdir_sink)
+        onlyfiles = [f for f in os.listdir(outdir) if os.path.isfile(os.path.join(outdir, f)) if ".a4." in f and ".sam.gz" in f]
         for f in onlyfiles:
+            shutil.copy2(os.path.join(outdir, f), os.path.join(outdir_source, f))
+            subprocess.call(["gunzip", os.path.join(outdir_source, f)])
+        #onlyfiles = [f for f in os.listdir(outdir) if os.path.isfile(os.path.join(outdir, f)) if ".sam" in f]
+        #for f in onlyfiles:
+        #    subprocess.Popen(["gzip", os.path.join(outdir, f)])
+        calculateArguments = ["calculateAUCForBFAST_GAP.py", "-b", "0", "-e", "97", "-s", "1", "-o", outdir_sink, "-p", str(num_processes), reference_genome_file, outdir_source, reads, str(total_reads)]
+        subprocess.call(calculateArguments, stdout = open(os.path.join(outdir_AUC, "AUC." + function_string + ".csv"), 'w'), stderr = open(os.path.join(outdir_AUC, "AUC." + function_string + ".err"), 'w' ))
+        subprocess.Popen(["gzip", "-r", outdir_sink])
+        if os.path.exists(outdir_source):
+            deleteAllFiles(outdir_source)
             try:
-                os.remove(os.path.join(outdir_source, f))
+                os.rmdir(outdir_source)
             except OSError:
                 pass
-        try:
-            os.rmdir(outdir_source)
-        except OSError:
-            pass
-    return fstring_middle
+        return fstring_middle
     
     
 def parseArgs(options, args, p):
@@ -107,7 +127,7 @@ def parseArgs(options, args, p):
                     s_f.write(str(j) + "\n")
                     s_f.write(str(0.0) + "\n")
                     s_f.write(str(0.0) + "\n")
-            p_handle = pool.apply_async(runBisPinCalculate, (scoring_filename, 3, reference_genome_file, my_outfile, reads, number_of_reads, fstring, fstring_write))
+            p_handle = pool.apply_async(runBisPinCalculate, (scoring_filename, 2, reference_genome_file, my_outfile, reads, number_of_reads, fstring, fstring_write))
             sys.stderr.write("Added work to pool:\t%s\n" % (str(fstring_write)))
             sys.stderr.flush()
             processes_get.append(p_handle)
@@ -134,7 +154,7 @@ def main():
     p.add_option('--gap_open_function_begin','-b',help='A string representing the beginning values of the function. [default: %default]', default = "0.05,-25.0")
     p.add_option('--gap_open_function_end','-e',help='A string representing the ending values of the function. [default: %default]', default = "1.25,150")
     p.add_option('--gap_increment_function', '-i', help='Amounts to increment each value. [default: %default]', default = "0.05,5")
-    p.add_option('--processes', '-p', help = 'The number of processes to execute at once. [default: %default]', default = '8') # (4 * 2) * 3 = 24 processes for mnemosyne, start with 8
+    p.add_option('--processes', '-p', help = 'The number of processes to execute at once. [default: %default]', default = '8')
     p.add_option('--extension','-x',help='Tune the gap extension function instead of the gap open function.  [default: %default]', action='store_true', default = False)
     #p.add_option()
     options, args = p.parse_args()
