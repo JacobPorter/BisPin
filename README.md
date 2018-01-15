@@ -1,5 +1,5 @@
 # BisPin
-BisPin is a Python 2.7 program that uses BFAST to map bisulfite-treated short DNA reads to a reference genome.  It supports the hairpin construction strategy and rescores ambiguously mapped reads.  Its default alignment scoring function is biologically motivated.
+BisPin is a Python 2.7 program that uses BFAST-Gap (or BFAST) to map bisulfite-treated short DNA reads to a reference genome.  It supports the hairpin construction strategy and rescores ambiguously mapped reads.  Its default alignment scoring function is biologically motivated.
 
 Created by Jacob Porter while at Virginia Tech.
 http://www.jacobporter.com
@@ -10,7 +10,7 @@ BisPin requires BFAST, which can be gotten at https://sourceforge.net/projects/b
 BisPin requires Python 2.7, which can be gotten at https://www.python.org/downloads/.
 
 ## Using BisPin
-If BFAST is not in the PATH variable, then it needs to be specified as an option to the BisPin index and align programs.  See the online help documentation for each program for usage and options.  This can be accessed by typing, for example, "BisPin_align.py --help".  The workflow for BisPin is the following.
+If BFAST-Gap is not in the PATH variable, then it needs to be specified as an option to the BisPin index and align programs.  See the online help documentation for each program for usage and options.  This can be accessed by typing, for example, "BisPin_align.py --help".  The workflow for BisPin is the following.
 
 1. BisPin_convert.py  This program creates two copies of the reference genome.  One is C-to-T converted, and the other is G-to-A converted.  This is necessary for the bisulfite alignment.  The files are stored in the same directory as the reference genome file.
 2. BisPin_index.py  This program creates BFAST indexes for the converted genomes in the previous step.  If the hairpin recovery strategy is used, BFAST indexes for the regular genome need to be created with this program as well.  The indexes are stored in the same directory as the reference genome.  The converted genomes from the previous step must exist and be in the same directory as the reference genome.
