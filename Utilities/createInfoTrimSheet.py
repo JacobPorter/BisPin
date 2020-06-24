@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import extractInformation
+from . import extractInformation
 import os
 import sys
 import optparse

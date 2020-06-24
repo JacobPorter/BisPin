@@ -260,7 +260,7 @@ def recover(CtoT_file, GtoA_file, tmpDir, gzip_switch, start, end):
     A_writer = SeqIterator.SeqWriter(fd_A, file_type = Constants.FASTQ)
     fd_post = open(post_filename, 'w')
     counter = -1
-    for i,j in itertools.izip(CtoT_Seqs, GtoA_Seqs):
+    for i,j in zip(CtoT_Seqs, GtoA_Seqs):
         counter += 1
         if (start != None and counter < start):
             continue

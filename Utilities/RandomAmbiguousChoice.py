@@ -3,9 +3,9 @@ import datetime
 import sys
 import optparse
 import random
-import IndentedHelpFormatterWithNL
-import SeqIterator
-import Constants
+from . import IndentedHelpFormatterWithNL
+from . import SeqIterator
+from . import Constants
 
 """
 @author: Jacob Porter

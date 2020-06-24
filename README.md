@@ -1,13 +1,13 @@
 # BisPin
-BisPin is a Python 2.7 program that uses BFAST-Gap (or BFAST) to map bisulfite-treated short DNA reads to a reference genome.  It supports the hairpin construction strategy and rescores ambiguously mapped reads.  Its default alignment scoring function is biologically motivated.
+BisPin is a Python 3 program that uses BFAST-Gap (or BFAST) to map bisulfite-treated short DNA reads to a reference genome.  It supports the hairpin construction strategy and rescores ambiguously mapped reads.  Its default alignment scoring function is biologically motivated.
 
 Created by Jacob Porter while at Virginia Tech.
 http://www.jacobporter.com
 http://www.vt.edu
 
 ## Requirements
-BisPin requires BFAST, which can be gotten at https://sourceforge.net/projects/bfast/.
-BisPin requires Python 2.7, which can be gotten at https://www.python.org/downloads/.
+BisPin requires BFAST-Gap, which can be gotten at https://github.com/JacobPorter/BFAST-Gap.
+BisPin requires Python 3, which can be gotten at https://www.python.org/downloads/.
 
 ## Using BisPin
 If BFAST-Gap is not in the PATH variable, then it needs to be specified as an option to the BisPin index and align programs.  See the online help documentation for each program for usage and options.  This can be accessed by typing, for example, "BisPin_align.py --help".  The workflow for BisPin is the following.
@@ -25,7 +25,7 @@ The program BisPin_extract.py can be used to separate the uniquely mapped, ambig
 - Support for input file partitioning for the hairpin recovery processing when using secondary indexes is not implemented.  The Linux tail and head commands can be used to partition FASTQ files.
 - The hairpin recovered methylation calling is inconsistent when compared to not using hairpin recovery.
 - BisPin_extract is relatively untested.
-- BFAST gives incorrect flags for paired end mapping that indicate incorrect orientations.
+- BFAST-Gap gives incorrect flags for paired end mapping that indicate incorrect orientations.
   -These flags are for the GA converted genome
     -115 should be 83 RC
     -179 should be 147 not RC

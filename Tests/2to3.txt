@@ -1,0 +1,161 @@
+RefactoringTool: Skipping optional fixer: buffer
+RefactoringTool: Skipping optional fixer: idioms
+RefactoringTool: Skipping optional fixer: set_literal
+RefactoringTool: Skipping optional fixer: ws_comma
+RefactoringTool: No changes to TestAlignmentTokenizers.py
+RefactoringTool: Refactored TestMismatchString.py
+RefactoringTool: No changes to TestReferenceSequenceExtraction.py
+RefactoringTool: No changes to TestUtilities.py
+RefactoringTool: No changes to testPopen.py
+RefactoringTool: Files that were modified:
+RefactoringTool: TestAlignmentTokenizers.py
+RefactoringTool: TestMismatchString.py
+RefactoringTool: TestReferenceSequenceExtraction.py
+RefactoringTool: TestUtilities.py
+RefactoringTool: testPopen.py
+--- TestMismatchString.py	(original)
++++ TestMismatchString.py	(refactored)
+@@ -8,7 +8,7 @@
+         pass
+     
+     def test_mismatchWithZeroAtFront(self):
+-        print "WithZeroAtFront"
++        print("WithZeroAtFront")
+         reference_sequence = "TAA"
+         bisulfite_sequence = "AAA"
+         converted_sequence = "AAA"
+@@ -19,7 +19,7 @@
+         self.assertEqual(expected_md_string , new_md_string[0])
+         
+     def test_mismatchWithZeroAtEnd(self):
+-        print "WithZeroAtEnd"
++        print("WithZeroAtEnd")
+         reference_sequence = "AAT"
+         bisulfite_sequence = "AAA"
+         converted_sequence = "AAA"
+@@ -30,7 +30,7 @@
+         self.assertEqual(expected_md_string , new_md_string[0])
+     
+     def test_mismatchBig(self):
+-        print "mismatchBig"
++        print("mismatchBig")
+         bisulfite_sequence = "GTGGGTATAAATTTATTGTTTTATGAAGAGATTGTAAATTTTTTTAATTTTTTTTTTTTTTTTTTTGGAAATTTTTGTCCTTG"
+         converted_sequence = "GTAAGTATAAATTTATTGTTTTATGAAGAGATTGTAAATTTTTTTAATTTTTTTTTTTTTTTTTTTGGAAATTTTTAATTTTG"
+         cigar_string = "2M 1I 27M 1I 3M 1D 11M 2I 19M 5I12M"
+@@ -40,7 +40,7 @@
+         self.assertEqual(expected_md_string.replace(" ", "") , new_md_string[0])
+         
+     def test_mismatchAtBegin(self):
+-        print "At Begin"
++        print("At Begin")
+         reference_sequence = "TTAAA"
+         bisulfite_sequence = "GTGGA"
+         converted_sequence = "ATAAA"
+@@ -51,7 +51,7 @@
+         self.assertEqual(expected_md_string , new_md_string[0])
+     
+     def test_mismatchEmpty(self):
+-        print "Empty"
++        print("Empty")
+         bisulfite_sequence = ""
+         converted_sequence = ""
+         cigar_string = ""
+@@ -61,7 +61,7 @@
+         self.assertEqual(expected_md_string , new_md_string[0])
+         
+     def test_mismatchAtEnd(self):
+-        print "mismatchAtEnd"
++        print("mismatchAtEnd")
+         reference_sequence = "GTGGT"
+         bisulfite_sequence = "GTGGA"
+         converted_sequence = "GTGGA"
+@@ -72,7 +72,7 @@
+         self.assertEqual(expected_md_string , new_md_string[0])
+         
+     def test_mismatchInsertBegin(self):
+-        print "Insert Begin"
++        print("Insert Begin")
+         bisulfite_sequence = "CCAAG"
+         converted_sequence = "CCAAG"
+         cigar_string = "2I3M"
+@@ -82,7 +82,7 @@
+         self.assertEqual(expected_md_string , new_md_string[0])
+         
+     def test_mismatchManyDeletes(self):
+-        print "Many Deletes"
++        print("Many Deletes")
+         reference_sequence = "CAATGCATTCTACTGAC"
+         bisulfite_sequence = "CCAAGGTCTT"
+                           #   IMMMDMDIMMMDM
+@@ -94,7 +94,7 @@
+         self.assertEqual(expected_md_string , new_md_string[0])
+         
+     def test_mismatchDeleteWithZeros(self):
+-        print "DeleteWithZeros"
++        print("DeleteWithZeros")
+         reference_sequence = "CTTT"
+         bisulfite_sequence = "CT"
+         converted_sequence = "CT"
+@@ -105,7 +105,7 @@
+         self.assertEqual(expected_md_string , new_md_string[0])
+         
+     def test_mismatchMismatchDiff(self):
+-        print "MismatchDiff"
++        print("MismatchDiff")
+         bisulfite_sequence = "CT"
+         converted_sequence = "TT"
+         cigar_string = "2M"
+@@ -115,7 +115,7 @@
+         self.assertEqual(expected_md_string , new_md_string[0])
+         
+     def test_mismatchMismatchDiff2(self):
+-        print "MismatchDiff2"
++        print("MismatchDiff2")
+         bisulfite_sequence = "TC"
+         converted_sequence = "TT"
+         cigar_string = "2M"
+@@ -125,7 +125,7 @@
+         self.assertEqual(expected_md_string , new_md_string[0])
+         
+     def test_mismatchBisulfiteCarries(self):
+-        print "Bisulfite Carries"
++        print("Bisulfite Carries")
+         bisulfite_sequence = "GA"
+         converted_sequence = "AA"
+         cigar_string = "2M"
+@@ -135,7 +135,7 @@
+         self.assertEqual(expected_md_string , new_md_string[0])
+         
+     def test_mismatchBisulfiteCarries2(self):
+-        print "Bisulfite Carries2"
++        print("Bisulfite Carries2")
+         bisulfite_sequence = "GA"
+         converted_sequence = "AA"
+         cigar_string = "2M"
+@@ -145,7 +145,7 @@
+         self.assertEqual(expected_md_string , new_md_string[0])
+         
+     def test_mismatchBisulfiteCarries3(self):
+-        print "Bisulfite Carries3"
++        print("Bisulfite Carries3")
+         bisulfite_sequence = "AAG"
+         converted_sequence = "AAA"
+         cigar_string = "1M1D2M"
+@@ -155,7 +155,7 @@
+         self.assertEqual(expected_md_string , new_md_string[0])
+         
+     def test_mismatchBisulfiteCarries4(self):
+-        print "Bisulfite Carries4"
++        print("Bisulfite Carries4")
+         bisulfite_sequence = "AG"
+         converted_sequence = "AA"
+         cigar_string = "2M"
+@@ -165,7 +165,7 @@
+         self.assertEqual(expected_md_string , new_md_string[0])
+         
+     def test_mismatchDelWithInserts(self):
+-        print "DelWithInserts"
++        print("DelWithInserts")
+         reference_sequence = "TAACTTA"
+         bisulfite_sequence = "TACTGACTTA"
+         converted_sequence = "TACTGACTTA"

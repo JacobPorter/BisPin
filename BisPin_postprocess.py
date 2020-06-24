@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import sys
+from functools import reduce
 sys.dont_write_bytecode = True
 import optparse
 import datetime
@@ -84,7 +85,7 @@ def selectBestAlignmentAndPostProcessSAMRecord(sam_files_list, pool, input_proto
     (sam_iterator_dictionary, sam_conversion_info) = makeSamFileTypeDictionary(sam_files_list)
     if use_secondary_indexes:
         (sam_iterator_dictionary2, _) = makeSamFileTypeDictionary(sam_files_list)
-    sam_iterator_keys = sam_iterator_dictionary.keys()
+    sam_iterator_keys = list(sam_iterator_dictionary.keys())
     filtered_unmapped = 0
     unaligned_unmapped = 0
     ambiguous = 0
@@ -99,7 +100,7 @@ def selectBestAlignmentAndPostProcessSAMRecord(sam_files_list, pool, input_proto
     #Load the reference genome into memory.
     if single_process_switch:
         (genome_dictionary, id_length_list, genome_construction_time) = makeReferenceGenomeDictionary(genome_file)
-        comments = ("@HD\tVN:1.3\tSO:unsorted\tGO:none\n", map(lambda x: "@SQ\tSN:%s\tLN:%s\n" % x , id_length_list), 
+        comments = ("@HD\tVN:1.3\tSO:unsorted\tGO:none\n", ["@SQ\tSN:%s\tLN:%s\n" % x for x in id_length_list], 
                     "@PG\tID:%s\tCL:%s\tVN:%s\n" % (Constants.SAM_VALUE_PROGRAM, command_line_string ,Constants.version))
         sam_output = SeqIterator.SeqWriter(BisPin_util.getPossibleGZIPFile(outputfile, gzip_switch, addGZ = True), file_type = Constants.SAM)
         if not remove_comments:
@@ -211,7 +212,7 @@ def selectBestAlignmentAndPostProcessSAMRecord(sam_files_list, pool, input_proto
                         break
                     else:
                         try:
-                            sam_iterator_dictionary2[key].next()
+                            next(sam_iterator_dictionary2[key])
                         except StopIteration as si:
                             #If this happens, something is wrong, and the SAM record was not found in the BFAST file.
                             #This could be a bug in BFAST-Gap.
@@ -223,9 +224,9 @@ def selectBestAlignmentAndPostProcessSAMRecord(sam_files_list, pool, input_proto
             #while(alignement_key == sam_iterator_dictionary[key].peekAtId()):
             while(next_Id != None and alignement_key == next_Id):
                 if in_alternate_file:
-                    sam_record = sam_iterator_dictionary2[key].next()
+                    sam_record = next(sam_iterator_dictionary2[key])
                 else:
-                    sam_record = sam_iterator_dictionary[key].next()
+                    sam_record = next(sam_iterator_dictionary[key])
                 if isFirstSegment(sam_record[Constants.SAM_KEY_FLAG]):
                     sam_record[Constants.SAM_KEY_READ] = conversion_info[0]
                     sam_record[Constants.SAM_KEY_GENOME] = conversion_info[2]
@@ -315,7 +316,7 @@ def multiprocessGenomeService(genome_file, pipes_parent, finished, return_info_o
     """
     #Load the reference genome
     (genome_dictionary, id_length_list, _) = makeReferenceGenomeDictionary(genome_file)
-    genome_comments = map(lambda x: "@SQ\tSN:%s\tLN:%s\n" % x , id_length_list)
+    genome_comments = ["@SQ\tSN:%s\tLN:%s\n" % x for x in id_length_list]
     comments.append("@HD\tVN:1.3\tSO:unsorted\tGO:none\n")
     for g in genome_comments:
         comments.append(g)
@@ -503,7 +504,7 @@ def computeWriteRecord(meilleur_alignement_dictionnaire, empty, record1, record2
         elif meilleur_alignements[0] == Constants.SAM_WRITE_FILTERED:
             for paired_record in meilleur_alignements[1]:
                 for single_record in paired_record:
-                    for key in single_record.keys():
+                    for key in list(single_record.keys()):
                         if not key in Constants.SAM_KEYS_TO_KEEP:
                             del single_record[key]
             write_record = (Constants.SAM_WRITE_FILTERED, meilleur_alignements[1])
@@ -523,7 +524,7 @@ def makeSamFileTypeDictionary(sam_file_list):
     for a_file in onlyfiles:
         split_a_file = a_file.split(".")
         for i in range(len(split_a_file)-1, -1, -1):
-            filetypes_equal = filter((lambda x: x == split_a_file[i]), filetypes)
+            filetypes_equal = list(filter((lambda x: x == split_a_file[i]), filetypes))
             if filetypes_equal != [] and filetypes_equal != '':
                 s_type = filetypes_equal[0]
                 sam_iterator_dict[s_type] = SeqIterator.SeqIterator(a_file, file_type=Constants.SAM)
@@ -542,8 +543,8 @@ def choisirAlignement(brut_alignements):
     e.g. [[pair1, pair2], [single1]]
     If the alignments are all unmapped, then return None
     """
-    unmapped_bits = map((lambda record: isUnmapped(record[Constants.SAM_KEY_FLAG])), 
-                         brut_alignements)
+    unmapped_bits = list(map((lambda record: isUnmapped(record[Constants.SAM_KEY_FLAG])), 
+                         brut_alignements))
     all_unmapped = reduce((lambda x, y: x and y), unmapped_bits)
     if all_unmapped: #If all the records are unmapped, return None
         return None
@@ -569,8 +570,8 @@ def choisirAlignement(brut_alignements):
             valeurs_et_records.append((group_avg, group))
     #Find the maximum alignment score and return only those grouped records.
     valeur_max = max(valeurs_et_records, key = (lambda x : x[0]))[0]
-    valeurs_et_records_max = filter((lambda x: x[0] == valeur_max), valeurs_et_records)
-    retvalue = (valeur_max, map((lambda x: x[1]), valeurs_et_records_max))
+    valeurs_et_records_max = list(filter((lambda x: x[0] == valeur_max), valeurs_et_records))
+    retvalue = (valeur_max, list(map((lambda x: x[1]), valeurs_et_records_max)))
     return retvalue
         
         
@@ -685,7 +686,7 @@ def traiterAlignement(meilleur_alignement, fastq_record_group, input_protocol, l
         #Look at the SAM record and its corresponding FASTQ record from the input
         for subrecord, fastq_record in zip(paired_record, fastq_record_group):
             #Delete unnecessary fields.
-            for key in subrecord.keys():
+            for key in list(subrecord.keys()):
                 if not key in Constants.SAM_KEYS_TO_KEEP:
                     del subrecord[key]
             #Extract the CIGAR string and the MD tag for computing and modifying the alignment strings
@@ -752,18 +753,17 @@ def traiterAlignement(meilleur_alignement, fastq_record_group, input_protocol, l
             subrecord[Constants.SAM_KEY_PROGRAM] = Constants.SAM_VALUE_PROGRAM
             subrecord[Constants.SAM_KEY_DISTANCE] = str(hamming_distance)
     if is_ambiguous and rescore_matrix[0] != None: # selectionnez le meilleur alignement pour multireads
-        valeurs_et_records = map(calculateScore, meilleur_alignement[1])
+        valeurs_et_records = list(map(calculateScore, meilleur_alignement[1]))
         valeur_max = max(valeurs_et_records, key = (lambda x : x[0]))[0]
-        valeurs_et_records_max = filter((lambda x: x[0] == valeur_max), valeurs_et_records)
-        meilleur_alignement_choice = map((lambda x: x[1]), valeurs_et_records_max)
+        valeurs_et_records_max = list(filter((lambda x: x[0] == valeur_max), valeurs_et_records))
+        meilleur_alignement_choice = list(map((lambda x: x[1]), valeurs_et_records_max))
     else:
         meilleur_alignement_choice = meilleur_alignement[1]
     if is_ambiguous or rescore_matrix[0] != None: #Adjust the bit on the flag to indicate the presence of secondary alignments
         primary_locations = [i for i in range(len(meilleur_alignement_choice)) if reduce(lambda x, y: x and y ,  
-                                                                                         map(lambda single_record: 
-                                                                                             ((Constants.SAM_VALUE_SECONDARY &
+                                                                                         [((Constants.SAM_VALUE_SECONDARY &
                                                                                                 int(single_record[Constants.SAM_KEY_FLAG])) >> 8) ==
-                                                                                              0, meilleur_alignement_choice[i])) ]
+                                                                                              0 for single_record in meilleur_alignement_choice[i]]) ]
         num_primaries = len(primary_locations)
         if num_primaries == 0: # No primary sequences.  Set a sequence to be the primary one.
             for subrecord in meilleur_alignement_choice[0]:
@@ -788,7 +788,7 @@ def calculateScore(record, key = Constants.SAM_KEY_RESCORE):
     @return: The average alignment score for grouped SAM records.
     """
     if isinstance(record, list):
-        score = sum(map(lambda x: float(x[key]), record))
+        score = sum([float(x[key]) for x in record])
         score /= (len(record) + 0.0)
         return (score, record)
     else:
@@ -812,9 +812,9 @@ def rescoreAlignment(fastq_seq, MI_string, direction, score_matrix, read_convers
         my_score_matrix = score_matrix[1] 
     score = sum(  #Add the contributions of deletions.
                 map((lambda x: my_score_matrix[Constants.OPEN_DEL] + my_score_matrix[Constants.EXT_DEL]*(len(x) - 1)) , 
-                    filter((lambda x: x.startswith("^")), MI_string)))
+                    list(filter((lambda x: x.startswith("^")), MI_string))))
     #Filter out the deletions so that insertions and mismatches can be counted
-    MI_string = filter((lambda x: not x.startswith("^")), MI_string)
+    MI_string = list(filter((lambda x: not x.startswith("^")), MI_string))
     openInsert = False
     for i in range(len(MI_string)):
         MI_char = MI_string[i].upper()
@@ -1036,8 +1036,8 @@ def makeMismatchString(bisulfite_sequence, alignement_record, reference_sequence
     if len(converted_sequence) != len(bisulfite_sequence):
         sys.stderr.write("%smakeMismatchString: Lengths of converted sequence and bisulfite sequence do not match.\nAlignment Record:\t%s\nInput FASTQ Record:\t%s\n" %
         (logstr, str(alignement_record), str(bisulfite_sequence)))
-    token_cigar = BisPin_util.tokenizeCigar(cigar) if isinstance(cigar, basestring) else cigar
-    token_md = BisPin_util.tokenizeMDtag(md) if isinstance(md, basestring) else md
+    token_cigar = BisPin_util.tokenizeCigar(cigar) if isinstance(cigar, str) else cigar
+    token_md = BisPin_util.tokenizeMDtag(md) if isinstance(md, str) else md
     token_cigar, token_md = checkDeletionInsertionProblem(token_cigar, token_md)
     deletions_list = BisPin_util.findDeletions(token_cigar, token_md, reference_sequence)
     if printOut:
@@ -1233,7 +1233,7 @@ def makeMethylationCallString(bisulfite_sequence, ref_cdr, MI_string, direction,
     @param direction: The direction of the alignment (forward or reverse).  Uses constants from Constants.
     @return: The methylation call string.
     """
-    MI_string = filter((lambda x: not x.startswith("^")), MI_string)
+    MI_string = list(filter((lambda x: not x.startswith("^")), MI_string))
     methylation_list = []
     len_MI_string = len(MI_string)
     #Get the methylation string for forward alignments.
@@ -1426,7 +1426,7 @@ def makeOutputReport(stats):
                                                                                                  str(100 * alignment_breakdown[4] / total_alignments))
     output_string += "\n"
     output_string += "Breakdown of uniquely aligned sequences.\n"
-    uat_keys = uniquely_aligned_types.keys()
+    uat_keys = list(uniquely_aligned_types.keys())
     uat_keys.sort()
     for key in uat_keys:
         output_string += "%s:\t%s\t%s\n" % (key, str(uniquely_aligned_types[key]), 
@@ -1504,7 +1504,7 @@ def createRescoreMatrix(score_lines, methylMatrix = False):
     @return: A dictionary representing the rescoring matrix function.
     """
     score_matrix = {}
-    score_lines = filter(lambda x : x != '', score_lines)
+    score_lines = [x for x in score_lines if x != '']
     columns = score_lines[0].upper().strip().split()
     open_scores = score_lines[6].strip().split(',')
     if len(open_scores) == 1:

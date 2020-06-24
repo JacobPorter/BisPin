@@ -183,7 +183,7 @@ def findDeletions(cigar_token, md_token, reference_sequence):
             new_delete = reference_sequence[reference_index : reference_index + len(token) - 1]
             deletion_list.append((current_position+1, '^' + new_delete))
             deletions_length += len(token) - 1
-        elif isinstance(token, basestring):
+        elif isinstance(token, str):
             current_position += len(token)
     return deletion_list
             

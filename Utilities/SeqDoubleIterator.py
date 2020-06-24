@@ -1,5 +1,5 @@
-import SeqIterator
-import Constants
+from . import SeqIterator
+from . import Constants
 
 """
 @author: Jacob Porter
@@ -17,9 +17,9 @@ class SeqDoubleIterator:
         return self
 
     def __next__(self):
-        return self.next()
+        return next(self)
 
-    def next(self):
-        record1 = self.SeqIterator1.next()
-        record2 = self.SeqIterator2.next()
+    def __next__(self):
+        record1 = next(self.SeqIterator1)
+        record2 = next(self.SeqIterator2)
         return (record1, record2)

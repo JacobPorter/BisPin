@@ -1,0 +1,472 @@
+RefactoringTool: Skipping optional fixer: buffer
+RefactoringTool: Skipping optional fixer: idioms
+RefactoringTool: Skipping optional fixer: set_literal
+RefactoringTool: Skipping optional fixer: ws_comma
+RefactoringTool: Refactored BisPin_util.py
+RefactoringTool: No changes to Constants.py
+RefactoringTool: No changes to Deprecator.py
+RefactoringTool: Refactored ExtractRescoredAlignments.py
+RefactoringTool: No changes to IndentedHelpFormatterWithNL.py
+RefactoringTool: Refactored RandomAmbiguousChoice.py
+RefactoringTool: Refactored RandomAmbiguousCuration.py
+RefactoringTool: Refactored SeqDoubleIterator.py
+RefactoringTool: Refactored SeqIterator.py
+RefactoringTool: Refactored alignmentScoreDistribution.py
+RefactoringTool: Refactored calculateAUCForBFAST_GAP.py
+RefactoringTool: Refactored calculateSimulationAccuracy.py
+--- BisPin_util.py	(original)
++++ BisPin_util.py	(refactored)
+@@ -183,7 +183,7 @@
+             new_delete = reference_sequence[reference_index : reference_index + len(token) - 1]
+             deletion_list.append((current_position+1, '^' + new_delete))
+             deletions_length += len(token) - 1
+-        elif isinstance(token, basestring):
++        elif isinstance(token, str):
+             current_position += len(token)
+     return deletion_list
+             
+--- ExtractRescoredAlignments.py	(original)
++++ ExtractRescoredAlignments.py	(refactored)
+@@ -3,9 +3,9 @@
+ import sys
+ import optparse
+ import random
+-import IndentedHelpFormatterWithNL
+-import SeqIterator
+-import Constants
++from . import IndentedHelpFormatterWithNL
++from . import SeqIterator
++from . import Constants
+ 
+ """
+ @author: Jacob Porter
+--- RandomAmbiguousChoice.py	(original)
++++ RandomAmbiguousChoice.py	(refactored)
+@@ -3,9 +3,9 @@
+ import sys
+ import optparse
+ import random
+-import IndentedHelpFormatterWithNL
+-import SeqIterator
+-import Constants
++from . import IndentedHelpFormatterWithNL
++from . import SeqIterator
++from . import Constants
+ 
+ """
+ @author: Jacob Porter
+--- RandomAmbiguousCuration.py	(original)
++++ RandomAmbiguousCuration.py	(refactored)
+@@ -1,6 +1,6 @@
+ #!/usr/bin/python
+ import optparse
+-import Constants
++from . import Constants
+ import datetime
+ import os
+ import sys
+@@ -44,12 +44,12 @@
+ 
+ 
+ def resultsString(results_dictionary):
+-    keys = results_dictionary.keys()
++    keys = list(results_dictionary.keys())
+     keys.sort()
+     results_string = ""
+     first = True
+     for k in keys:
+-        record_keys = results_dictionary[k].keys()            
++        record_keys = list(results_dictionary[k].keys())            
+         record_keys.sort()
+         if first:
+             first = False
+--- SeqDoubleIterator.py	(original)
++++ SeqDoubleIterator.py	(refactored)
+@@ -1,5 +1,5 @@
+-import SeqIterator
+-import Constants
++from . import SeqIterator
++from . import Constants
+ 
+ """
+ @author: Jacob Porter
+@@ -17,9 +17,9 @@
+         return self
+ 
+     def __next__(self):
+-        return self.next()
++        return next(self)
+ 
+-    def next(self):
+-        record1 = self.SeqIterator1.next()
+-        record2 = self.SeqIterator2.next()
++    def __next__(self):
++        record1 = next(self.SeqIterator1)
++        record2 = next(self.SeqIterator2)
+         return (record1, record2)
+--- SeqIterator.py	(original)
++++ SeqIterator.py	(refactored)
+@@ -1,5 +1,5 @@
+ #!/usr/bin/python
+-import Constants
++from . import Constants
+ import gzip
+ 
+ """
+@@ -44,9 +44,9 @@
+         return self
+ 
+     def __next__(self):
+-        return self.next()
+-
+-    def next(self):
++        return next(self)
++
++    def __next__(self):
+         if self.type == 0:  # FASTA
+             seq_id = self.next_line
+             seq_seq = self.seq_file.readline()
+@@ -89,7 +89,7 @@
+             sam_dictionary["TLEN"] = sam_list[8]
+             sam_dictionary["SEQ"] = sam_list[9]
+             sam_dictionary["QUAL"] = sam_list[10]
+-            for i in xrange(10,len(sam_list)):
++            for i in range(10,len(sam_list)):
+                 if sam_list[i].startswith("AS:i"):
+                     sam_dictionary[Constants.SAM_KEY_ALIGNMENT_SCORE] = sam_list[i].strip("AS:i:")
+                 elif sam_list[i].startswith("AS:f"):
+@@ -198,7 +198,7 @@
+                 separator = seq[3]
+             self.seq_file.write("@" + seq[0] + "\n" + seq[1] + "\n" + separator + "\n" + seq[2] + "\n")
+         elif self.type == 2: #SAM
+-            if isinstance(seq, basestring): #For writing comments
++            if isinstance(seq, str): #For writing comments
+                 self.seq_file.write(seq)
+             else: #Write a record
+                 line_string = ""
+--- alignmentScoreDistribution.py	(original)
++++ alignmentScoreDistribution.py	(refactored)
+@@ -2,9 +2,9 @@
+ import datetime
+ import optparse
+ import sys
+-import IndentedHelpFormatterWithNL 
+-import Constants
+-import SeqIterator
++from . import IndentedHelpFormatterWithNL 
++from . import Constants
++from . import SeqIterator
+ import math
+ 
+ """
+@@ -27,8 +27,8 @@
+ 
+ def findASDistribution(sam_file, use_edit_distance, bucket_count = bucket_count_default):
+     sam_input = SeqIterator.SeqIterator(sam_file, file_type=Constants.SAM)
+-    as_max = -sys.maxint - 1
+-    as_min = sys.maxint
++    as_max = -sys.maxsize - 1
++    as_min = sys.maxsize
+     no_hits = 0
+     total_records = 0
+     scores = []
+@@ -63,7 +63,7 @@
+         for alignment_score in scores:
+             bucket_index = int(math.floor((alignment_score - as_min) / bucket_length))
+             buckets[bucket_index] += 1
+-        freq = map((lambda x: x / (total_records + 0.0)), buckets)
++        freq = list(map((lambda x: x / (total_records + 0.0)), buckets))
+         return (freq, score_bounds_list, total_records, as_max, as_min, buckets, avg_score, median_score, no_hits)
+     else:
+         return (scores, "", total_records, as_max, as_min, "", avg_score, median_score, no_hits)
+@@ -91,7 +91,7 @@
+     sys.stdout.write("Processing the file %s with %s buckets.\n" % (sam_file, str(options.buckets)))
+     stats = findASDistribution(sam_file, options.edit, bucket_count = int(options.buckets))
+     (freq, score_bounds_list, total_records, as_max, as_min, buckets, avg_score, median_score, no_hits) = stats
+-    stats = map(lambda x: str(x), stats)
++    stats = [str(x) for x in stats]
+     result_string = "Frequency distribution / scores: %s\nScore bounds: %s\nReads processed: %s\nMaximum score: %s\nMinimum score: %s\nCounts: %s\nAverage score: %s\nMedian score: %s\nNumber of no hit alignments: %s\n" % (freq, score_bounds_list, total_records, as_max, as_min, buckets, avg_score, median_score, no_hits)
+     later = datetime.datetime.now()
+     runtime = later - now
+--- calculateAUCForBFAST_GAP.py	(original)
++++ calculateAUCForBFAST_GAP.py	(refactored)
+@@ -6,7 +6,7 @@
+ import sys
+ import os
+ import csv
+-import calculateSimulationAccuracy
++from . import calculateSimulationAccuracy
+ 
+ """
+ This program examines all filter values in some range and computes the F1_Score based for simulated reads.  It uses the preprocessed BFAST SAM files.
+--- calculateSimulationAccuracy.py	(original)
++++ calculateSimulationAccuracy.py	(refactored)
+@@ -1,10 +1,10 @@
+ #!/usr/bin/python
+-import SeqIterator
++from . import SeqIterator
+ import datetime
+ import optparse
+ import os
+ import sys
+-import Constants
++from . import Constants
+ import re
+ 
+ logstr = "calculateSimulationAccuracy:\t"
+@@ -26,7 +26,7 @@
+     record_dict = sam_iterator.convertToDict("R1", "R2")
+     counter_dict["Total_SAM_Records"] = sam_iterator.records_processed()
+     counter = 0
+-    for key in record_dict.keys():
++    for key in list(record_dict.keys()):
+         if counter < print_value:
+             sys.stderr.write("%s\n" % str(record_dict[key]))
+             counter += 1
+@@ -92,24 +92,24 @@
+     add_s = "paired end" if paired_end else "single end" 
+     if reads_analyzed == 0.0:
+         reads_analyzed = 0.0000000000000001
+-    print "calculateSimulationAccuracy"
+-    print "---------------------------"
+-    print "For the %s SAM file %s, the process was started at %s and it took time %s." % (add_s, SAM_file, str(now), str(later - now))
+-    print "The interval around the real location had length %s above and below the real location." % str(bounds)
+-    print ""
+-    print "Total SAM records processed:\t%s" % (str(counter_dict["Total_SAM_Records"]))
+-    print "Total number of reads from the input:\t%s" % (str(total_reads))
+-    print "Total reads analyzed (uniquely mapped):\t%s" % (str(reads_analyzed))
+-    print "Reads unanalzyed, unmapped/filtered, improper, ambig:\t%s\t%s\t%s\t%s" % (str(remaining_reads), str(counter_dict["Unmap/Filter"]), str(counter_dict["Improper"]), str(remaining_reads - counter_dict["Unmap/Filter"] - counter_dict["Improper"]))
+-    print ""
+-    print "Percent correct of total    reads:\t%s" % (str(counter_dict["Correct"] / total_reads))
+-    print "Percent correct of analyzed reads:\t%s" % (str(counter_dict["Correct"] / reads_analyzed))
+-    print "Percent incorrect of total reads:\t%s" % (str(counter_dict["Incorrect"] / total_reads))RefactoringTool: Refactored countBFAST-Gap.py
+RefactoringTool: Refactored countBWA.py
+RefactoringTool: Refactored createAllTrimSheet.py
+RefactoringTool: Refactored createInfoTrimSheet.py
+RefactoringTool: No changes to curateSimulationReplicates.py
+RefactoringTool: No changes to extractInformation.py
+RefactoringTool: Refactored getFirstRecords.py
+RefactoringTool: Refactored hairpinValidation.py
+RefactoringTool: Refactored lengthHistogram.py
+RefactoringTool: Refactored lengthSelector.py
+RefactoringTool: Refactored samFASTQmatcher.py
+RefactoringTool: No changes to tuneAggregateResults.py
+RefactoringTool: Refactored tuneGapFunction.py
+RefactoringTool: Refactored tuneGapFunction2.py
+RefactoringTool: Files that were modified:
+RefactoringTool: BisPin_util.py
+RefactoringTool: Constants.py
+RefactoringTool: Deprecator.py
+RefactoringTool: ExtractRescoredAlignments.py
+RefactoringTool: IndentedHelpFormatterWithNL.py
+RefactoringTool: RandomAmbiguousChoice.py
+RefactoringTool: RandomAmbiguousCuration.py
+RefactoringTool: SeqDoubleIterator.py
+RefactoringTool: SeqIterator.py
+RefactoringTool: alignmentScoreDistribution.py
+RefactoringTool: calculateAUCForBFAST_GAP.py
+RefactoringTool: calculateSimulationAccuracy.py
+RefactoringTool: countBFAST-Gap.py
+RefactoringTool: countBWA.py
+RefactoringTool: createAllTrimSheet.py
+RefactoringTool: createInfoTrimSheet.py
+RefactoringTool: curateSimulationReplicates.py
+RefactoringTool: extractInformation.py
+RefactoringTool: getFirstRecords.py
+RefactoringTool: hairpinValidation.py
+RefactoringTool: lengthHistogram.py
+RefactoringTool: lengthSelector.py
+RefactoringTool: samFASTQmatcher.py
+RefactoringTool: tuneAggregateResults.py
+RefactoringTool: tuneGapFunction.py
+RefactoringTool: tuneGapFunction2.py
+
+-    print "Percent incorrect of reads analzyed:\t%s" % (str(counter_dict["Incorrect"] / reads_analyzed))
+-    print "Percent of reads         unanalyzed:\t%s" % (str(remaining_reads / total_reads))
+-    print ""
+-    print "Counter Object:"
+-    print str(counter_dict)
++    print("calculateSimulationAccuracy")
++    print("---------------------------")
++    print("For the %s SAM file %s, the process was started at %s and it took time %s." % (add_s, SAM_file, str(now), str(later - now)))
++    print("The interval around the real location had length %s above and below the real location." % str(bounds))
++    print("")
++    print("Total SAM records processed:\t%s" % (str(counter_dict["Total_SAM_Records"])))
++    print("Total number of reads from the input:\t%s" % (str(total_reads)))
++    print("Total reads analyzed (uniquely mapped):\t%s" % (str(reads_analyzed)))
++    print("Reads unanalzyed, unmapped/filtered, improper, ambig:\t%s\t%s\t%s\t%s" % (str(remaining_reads), str(counter_dict["Unmap/Filter"]), str(counter_dict["Improper"]), str(remaining_reads - counter_dict["Unmap/Filter"] - counter_dict["Improper"])))
++    print("")
++    print("Percent correct of total    reads:\t%s" % (str(counter_dict["Correct"] / total_reads)))
++    print("Percent correct of analyzed reads:\t%s" % (str(counter_dict["Correct"] / reads_analyzed)))
++    print("Percent incorrect of total reads:\t%s" % (str(counter_dict["Incorrect"] / total_reads)))
++    print("Percent incorrect of reads analzyed:\t%s" % (str(counter_dict["Incorrect"] / reads_analyzed)))
++    print("Percent of reads         unanalyzed:\t%s" % (str(remaining_reads / total_reads)))
++    print("")
++    print("Counter Object:")
++    print(str(counter_dict))
+ 
+ 
+ def main():
+--- countBFAST-Gap.py	(original)
++++ countBFAST-Gap.py	(refactored)
+@@ -1,10 +1,10 @@
+ #!/usr/bin/python
+-import SeqIterator
++from . import SeqIterator
+ import datetime
+ import optparse
+ import os
+ import sys
+-import Constants
++from . import Constants
+ 
+ logstr = 'countBFAST-GAP '
+ 
+--- countBWA.py	(original)
++++ countBWA.py	(refactored)
+@@ -1,10 +1,10 @@
+ #!/usr/bin/python
+-import SeqIterator
++from . import SeqIterator
+ import datetime
+ import optparse
+ import os
+ import sys
+-import Constants
++from . import Constants
+ 
+ logstr = "countBWA:\t"
+ 
+--- createAllTrimSheet.py	(original)
++++ createAllTrimSheet.py	(refactored)
+@@ -1,6 +1,6 @@
+ #!/usr/bin/python
+-import createInfoTrimSheet
+-import extractInformation
++from . import createInfoTrimSheet
++from . import extractInformation
+ import os
+ import sys
+ import optparse
+--- createInfoTrimSheet.py	(original)
++++ createInfoTrimSheet.py	(refactored)
+@@ -1,5 +1,5 @@
+ #!/usr/bin/python
+-import extractInformation
++from . import extractInformation
+ import os
+ import sys
+ import optparse
+--- getFirstRecords.py	(original)
++++ getFirstRecords.py	(refactored)
+@@ -1,5 +1,5 @@
+ #!/usr/bin/python
+-import SeqIterator
++from . import SeqIterator
+ import optparse
+ import sys
+ import datetime
+--- hairpinValidation.py	(original)
++++ hairpinValidation.py	(refactored)
+@@ -3,8 +3,8 @@
+ import optparse
+ import os
+ import sys
+-import SeqIterator
+-import Constants
++from . import SeqIterator
++from . import Constants
+ 
+ logstr = "hairpinValidation:\t"
+ 
+@@ -51,15 +51,15 @@
+     reads_analyzed = int(counter["Hairpin_Hits"]) + 0.0
+     if reads_analyzed == 0.0:
+         reads_analyzed = 0.0000000000000001
+-    print "hairpinValidation"
+-    print "---------------------------"
+-    print "Using the %s hairpin recovery SAM file, processing the SAM file %s took time %s beginning at %s." % (hairpin_recovered_filename, test_filename, str(later - now), str(now))
+-    print "The interval around the real location had length %s above and below the real location." % str(bound)
+-    print ""
+-    keys = counter.keys()
++    print("hairpinValidation")
++    print("---------------------------")
++    print("Using the %s hairpin recovery SAM file, processing the SAM file %s took time %s beginning at %s." % (hairpin_recovered_filename, test_filename, str(later - now), str(now)))
++    print("The interval around the real location had length %s above and below the real location." % str(bound))
++    print("")
++    keys = list(counter.keys())
+     keys.sort()
+     for key in keys:
+-        print "%s reads:\t%d\t%f" % (key, counter[key], counter[key] / reads_analyzed)
++        print("%s reads:\t%d\t%f" % (key, counter[key], counter[key] / reads_analyzed))
+ 
+ def main():
+     now = datetime.datetime.now()
+--- lengthHistogram.py	(original)
++++ lengthHistogram.py	(refactored)
+@@ -1,5 +1,5 @@
+ #!/usr/bin/python
+-import SeqIterator
++from . import SeqIterator
+ import optparse
+ import datetime
+ import os
+@@ -22,7 +22,7 @@
+             histogram[record_length] += 1
+         else:
+             histogram[record_length] = 1
+-    keys = histogram.keys()
++    keys = list(histogram.keys())
+     keys.sort()
+     items = []
+     average = 0
+--- lengthSelector.py	(original)
++++ lengthSelector.py	(refactored)
+@@ -1,5 +1,5 @@
+ #!/usr/bin/python
+-import SeqIterator
++from . import SeqIterator
+ import optparse
+ import datetime
+ import os
+--- samFASTQmatcher.py	(original)
++++ samFASTQmatcher.py	(refactored)
+@@ -2,7 +2,7 @@
+ import optparse
+ import datetime
+ import sys
+-import SeqIterator
++from . import SeqIterator
+ 
+ """
+ This program takes a SAM file and a FASTQ file as input.  It prints out fastq file records
+--- tuneGapFunction.py	(original)
++++ tuneGapFunction.py	(refactored)
+@@ -63,9 +63,9 @@
+     else:
+         fstring_middle = "_".join(scoring_list[5:9])
+     #gap_function_arguments = map(lambda x: float(x), scoring_list[5:9])
+-    gap_open_function_begin = map(lambda x: float(x), options.gap_open_function_begin.split(","))
+-    gap_open_function_end = map(lambda x: float(x), options.gap_open_function_end.split(","))
+-    gap_increment_function = map(lambda x: float(x), options.gap_increment_function.split(","))
++    gap_open_function_begin = [float(x) for x in options.gap_open_function_begin.split(",")]
++    gap_open_function_end = [float(x) for x in options.gap_open_function_end.split(",")]
++    gap_increment_function = [float(x) for x in options.gap_increment_function.split(",")]
+     sys.stderr.write("Begin:\t%s\nEnd:\t%s\nStep:\t%s\n" % (str(gap_open_function_begin), str(gap_open_function_end), str(gap_increment_function)))
+     sys.stderr.flush()
+     pool = multiprocessing.Pool(processes = int(options.processes) / 2)
+--- tuneGapFunction2.py	(original)
++++ tuneGapFunction2.py	(refactored)
+@@ -83,9 +83,9 @@
+     else:
+         fstring_middle = "_".join(scoring_list[5:9])
+     #gap_function_arguments = map(lambda x: float(x), scoring_list[5:9])
+-    gap_open_function_begin = map(lambda x: float(x), options.gap_open_function_begin.split(","))
+-    gap_open_function_end = map(lambda x: float(x), options.gap_open_function_end.split(","))
+-    gap_increment_function = map(lambda x: float(x), options.gap_increment_function.split(","))
++    gap_open_function_begin = [float(x) for x in options.gap_open_function_begin.split(",")]
++    gap_open_function_end = [float(x) for x in options.gap_open_function_end.split(",")]
++    gap_increment_function = [float(x) for x in options.gap_increment_function.split(",")]
+     sys.stderr.write("Begin:\t%s\nEnd:\t%s\nStep:\t%s\n" % (str(gap_open_function_begin), str(gap_open_function_end), str(gap_increment_function)))
+     sys.stderr.flush()
+     pool = multiprocessing.Pool(processes = int(options.processes) / 2)

@@ -1,6 +1,6 @@
 #!/usr/bin/python
-import createInfoTrimSheet
-import extractInformation
+from . import createInfoTrimSheet
+from . import extractInformation
 import os
 import sys
 import optparse

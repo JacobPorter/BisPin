@@ -2,7 +2,7 @@
 import optparse
 import datetime
 import sys
-import SeqIterator
+from . import SeqIterator
 
 """
 This program takes a SAM file and a FASTQ file as input.  It prints out fastq file records

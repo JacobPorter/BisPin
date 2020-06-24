@@ -2,9 +2,9 @@
 import datetime
 import optparse
 import sys
-import IndentedHelpFormatterWithNL 
-import Constants
-import SeqIterator
+from . import IndentedHelpFormatterWithNL 
+from . import Constants
+from . import SeqIterator
 import math
 
 """
@@ -27,8 +27,8 @@ def isFiltered(flag):
 
 def findASDistribution(sam_file, use_edit_distance, bucket_count = bucket_count_default):
     sam_input = SeqIterator.SeqIterator(sam_file, file_type=Constants.SAM)
-    as_max = -sys.maxint - 1
-    as_min = sys.maxint
+    as_max = -sys.maxsize - 1
+    as_min = sys.maxsize
     no_hits = 0
     total_records = 0
     scores = []
@@ -63,7 +63,7 @@ def findASDistribution(sam_file, use_edit_distance, bucket_count = bucket_count_
         for alignment_score in scores:
             bucket_index = int(math.floor((alignment_score - as_min) / bucket_length))
             buckets[bucket_index] += 1
-        freq = map((lambda x: x / (total_records + 0.0)), buckets)
+        freq = list(map((lambda x: x / (total_records + 0.0)), buckets))
         return (freq, score_bounds_list, total_records, as_max, as_min, buckets, avg_score, median_score, no_hits)
     else:
         return (scores, "", total_records, as_max, as_min, "", avg_score, median_score, no_hits)
@@ -91,7 +91,7 @@ def main():
     sys.stdout.write("Processing the file %s with %s buckets.\n" % (sam_file, str(options.buckets)))
     stats = findASDistribution(sam_file, options.edit, bucket_count = int(options.buckets))
     (freq, score_bounds_list, total_records, as_max, as_min, buckets, avg_score, median_score, no_hits) = stats
-    stats = map(lambda x: str(x), stats)
+    stats = [str(x) for x in stats]
     result_string = "Frequency distribution / scores: %s\nScore bounds: %s\nReads processed: %s\nMaximum score: %s\nMinimum score: %s\nCounts: %s\nAverage score: %s\nMedian score: %s\nNumber of no hit alignments: %s\n" % (freq, score_bounds_list, total_records, as_max, as_min, buckets, avg_score, median_score, no_hits)
     later = datetime.datetime.now()
     runtime = later - now

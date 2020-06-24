@@ -1,10 +1,10 @@
 #!/usr/bin/python
-import SeqIterator
+from . import SeqIterator
 import datetime
 import optparse
 import os
 import sys
-import Constants
+from . import Constants
 import re
 
 logstr = "calculateSimulationAccuracy:\t"
@@ -26,7 +26,7 @@ def processSAM(SAM_file, gzip_switch, bound, paired_end, dwgsim, print_value = 1
     record_dict = sam_iterator.convertToDict("R1", "R2")
     counter_dict["Total_SAM_Records"] = sam_iterator.records_processed()
     counter = 0
-    for key in record_dict.keys():
+    for key in list(record_dict.keys()):
         if counter < print_value:
             sys.stderr.write("%s\n" % str(record_dict[key]))
             counter += 1
@@ -92,24 +92,24 @@ def report(counter_dict, paired_end, SAM_file, bounds, total_reads, now, later):
     add_s = "paired end" if paired_end else "single end" 
     if reads_analyzed == 0.0:
         reads_analyzed = 0.0000000000000001
-    print "calculateSimulationAccuracy"
-    print "---------------------------"
-    print "For the %s SAM file %s, the process was started at %s and it took time %s." % (add_s, SAM_file, str(now), str(later - now))
-    print "The interval around the real location had length %s above and below the real location." % str(bounds)
-    print ""
-    print "Total SAM records processed:\t%s" % (str(counter_dict["Total_SAM_Records"]))
-    print "Total number of reads from the input:\t%s" % (str(total_reads))
-    print "Total reads analyzed (uniquely mapped):\t%s" % (str(reads_analyzed))
-    print "Reads unanalzyed, unmapped/filtered, improper, ambig:\t%s\t%s\t%s\t%s" % (str(remaining_reads), str(counter_dict["Unmap/Filter"]), str(counter_dict["Improper"]), str(remaining_reads - counter_dict["Unmap/Filter"] - counter_dict["Improper"]))
-    print ""
-    print "Percent correct of total    reads:\t%s" % (str(counter_dict["Correct"] / total_reads))
-    print "Percent correct of analyzed reads:\t%s" % (str(counter_dict["Correct"] / reads_analyzed))
-    print "Percent incorrect of total reads:\t%s" % (str(counter_dict["Incorrect"] / total_reads))
-    print "Percent incorrect of reads analzyed:\t%s" % (str(counter_dict["Incorrect"] / reads_analyzed))
-    print "Percent of reads         unanalyzed:\t%s" % (str(remaining_reads / total_reads))
-    print ""
-    print "Counter Object:"
-    print str(counter_dict)
+    print("calculateSimulationAccuracy")
+    print("---------------------------")
+    print("For the %s SAM file %s, the process was started at %s and it took time %s." % (add_s, SAM_file, str(now), str(later - now)))
+    print("The interval around the real location had length %s above and below the real location." % str(bounds))
+    print("")
+    print("Total SAM records processed:\t%s" % (str(counter_dict["Total_SAM_Records"])))
+    print("Total number of reads from the input:\t%s" % (str(total_reads)))
+    print("Total reads analyzed (uniquely mapped):\t%s" % (str(reads_analyzed)))
+    print("Reads unanalzyed, unmapped/filtered, improper, ambig:\t%s\t%s\t%s\t%s" % (str(remaining_reads), str(counter_dict["Unmap/Filter"]), str(counter_dict["Improper"]), str(remaining_reads - counter_dict["Unmap/Filter"] - counter_dict["Improper"])))
+    print("")
+    print("Percent correct of total    reads:\t%s" % (str(counter_dict["Correct"] / total_reads)))
+    print("Percent correct of analyzed reads:\t%s" % (str(counter_dict["Correct"] / reads_analyzed)))
+    print("Percent incorrect of total reads:\t%s" % (str(counter_dict["Incorrect"] / total_reads)))
+    print("Percent incorrect of reads analzyed:\t%s" % (str(counter_dict["Incorrect"] / reads_analyzed)))
+    print("Percent of reads         unanalyzed:\t%s" % (str(remaining_reads / total_reads)))
+    print("")
+    print("Counter Object:")
+    print(str(counter_dict))
 
 
 def main():

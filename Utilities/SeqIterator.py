@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import Constants
+from . import Constants
 import gzip
 
 """
@@ -44,9 +44,9 @@ class SeqIterator:
         return self
 
     def __next__(self):
-        return self.next()
+        return next(self)
 
-    def next(self):
+    def __next__(self):
         if self.type == 0:  # FASTA
             seq_id = self.next_line
             seq_seq = self.seq_file.readline()
@@ -89,7 +89,7 @@ class SeqIterator:
             sam_dictionary["TLEN"] = sam_list[8]
             sam_dictionary["SEQ"] = sam_list[9]
             sam_dictionary["QUAL"] = sam_list[10]
-            for i in xrange(10,len(sam_list)):
+            for i in range(10,len(sam_list)):
                 if sam_list[i].startswith("AS:i"):
                     sam_dictionary[Constants.SAM_KEY_ALIGNMENT_SCORE] = sam_list[i].strip("AS:i:")
                 elif sam_list[i].startswith("AS:f"):
@@ -198,7 +198,7 @@ class SeqWriter:
                 separator = seq[3]
             self.seq_file.write("@" + seq[0] + "\n" + seq[1] + "\n" + separator + "\n" + seq[2] + "\n")
         elif self.type == 2: #SAM
-            if isinstance(seq, basestring): #For writing comments
+            if isinstance(seq, str): #For writing comments
                 self.seq_file.write(seq)
             else: #Write a record
                 line_string = ""

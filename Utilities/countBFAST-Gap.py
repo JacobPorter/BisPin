@@ -1,10 +1,10 @@
 #!/usr/bin/python
-import SeqIterator
+from . import SeqIterator
 import datetime
 import optparse
 import os
 import sys
-import Constants
+from . import Constants
 
 logstr = 'countBFAST-GAP '
 

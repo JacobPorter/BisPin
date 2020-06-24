@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import SeqIterator
+from . import SeqIterator
 import optparse
 import datetime
 import os
@@ -22,7 +22,7 @@ def calculateHistogram(readsfile, file_type):
             histogram[record_length] += 1
         else:
             histogram[record_length] = 1
-    keys = histogram.keys()
+    keys = list(histogram.keys())
     keys.sort()
     items = []
     average = 0

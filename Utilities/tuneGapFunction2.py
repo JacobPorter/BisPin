@@ -83,9 +83,9 @@ def parseArgs(options, args, p):
     else:
         fstring_middle = "_".join(scoring_list[5:9])
     #gap_function_arguments = map(lambda x: float(x), scoring_list[5:9])
-    gap_open_function_begin = map(lambda x: float(x), options.gap_open_function_begin.split(","))
-    gap_open_function_end = map(lambda x: float(x), options.gap_open_function_end.split(","))
-    gap_increment_function = map(lambda x: float(x), options.gap_increment_function.split(","))
+    gap_open_function_begin = [float(x) for x in options.gap_open_function_begin.split(",")]
+    gap_open_function_end = [float(x) for x in options.gap_open_function_end.split(",")]
+    gap_increment_function = [float(x) for x in options.gap_increment_function.split(",")]
     sys.stderr.write("Begin:\t%s\nEnd:\t%s\nStep:\t%s\n" % (str(gap_open_function_begin), str(gap_open_function_end), str(gap_increment_function)))
     sys.stderr.flush()
     pool = multiprocessing.Pool(processes = int(options.processes) / 2)

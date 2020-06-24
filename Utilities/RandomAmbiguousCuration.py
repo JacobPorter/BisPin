@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import optparse
-import Constants
+from . import Constants
 import datetime
 import os
 import sys
@@ -44,12 +44,12 @@ def extractStats(filename_string):
 
 
 def resultsString(results_dictionary):
-    keys = results_dictionary.keys()
+    keys = list(results_dictionary.keys())
     keys.sort()
     results_string = ""
     first = True
     for k in keys:
-        record_keys = results_dictionary[k].keys()            
+        record_keys = list(results_dictionary[k].keys())            
         record_keys.sort()
         if first:
             first = False

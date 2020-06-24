@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import SeqIterator
+from . import SeqIterator
 import optparse
 import sys
 import datetime

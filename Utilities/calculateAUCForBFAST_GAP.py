@@ -6,7 +6,7 @@ import subprocess
 import sys
 import os
 import csv
-import calculateSimulationAccuracy
+from . import calculateSimulationAccuracy
 
 """
 This program examines all filter values in some range and computes the F1_Score based for simulated reads.  It uses the preprocessed BFAST SAM files.

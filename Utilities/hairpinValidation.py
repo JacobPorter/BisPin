@@ -3,8 +3,8 @@ import datetime
 import optparse
 import os
 import sys
-import SeqIterator
-import Constants
+from . import SeqIterator
+from . import Constants
 
 logstr = "hairpinValidation:\t"
 
@@ -51,15 +51,15 @@ def report(counter, hairpin_recovered_filename, test_filename, bound, now, later
     reads_analyzed = int(counter["Hairpin_Hits"]) + 0.0
     if reads_analyzed == 0.0:
         reads_analyzed = 0.0000000000000001
-    print "hairpinValidation"
-    print "---------------------------"
-    print "Using the %s hairpin recovery SAM file, processing the SAM file %s took time %s beginning at %s." % (hairpin_recovered_filename, test_filename, str(later - now), str(now))
-    print "The interval around the real location had length %s above and below the real location." % str(bound)
-    print ""
-    keys = counter.keys()
+    print("hairpinValidation")
+    print("---------------------------")
+    print("Using the %s hairpin recovery SAM file, processing the SAM file %s took time %s beginning at %s." % (hairpin_recovered_filename, test_filename, str(later - now), str(now)))
+    print("The interval around the real location had length %s above and below the real location." % str(bound))
+    print("")
+    keys = list(counter.keys())
     keys.sort()
     for key in keys:
-        print "%s reads:\t%d\t%f" % (key, counter[key], counter[key] / reads_analyzed)
+        print("%s reads:\t%d\t%f" % (key, counter[key], counter[key] / reads_analyzed))
 
 def main():
     now = datetime.datetime.now()
