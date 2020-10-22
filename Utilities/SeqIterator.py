@@ -1,12 +1,13 @@
 #!/usr/bin/python
-from . import Constants
 import gzip
 
+from . import Constants
 """
 @author: Jacob Porter
 @summary: An iterator class for iterating through sequence record files.
 @status: A bit kludgy.
 """
+
 
 class FileTypeError(Exception):
     def __init__(self, expr, msg):
@@ -15,10 +16,10 @@ class FileTypeError(Exception):
 
 
 class SeqIterator:
-    def __init__(self, file_name, file_type='fasta', gzip_switch = False):
-        self.my_init(file_name, file_type=file_type, gzip_switch = gzip_switch)
-        
-    def my_init(self, file_name, file_type='fasta', gzip_switch = False):
+    def __init__(self, file_name, file_type='fasta', gzip_switch=False):
+        self.my_init(file_name, file_type=file_type, gzip_switch=gzip_switch)
+
+    def my_init(self, file_name, file_type='fasta', gzip_switch=False):
         self.c = 0
         self.file_name = file_name
         if gzip_switch:
@@ -27,26 +28,27 @@ class SeqIterator:
             self.seq_file = open(file_name, 'r')
         self.next_line = self.seq_file.readline()
         self.file_type = file_type.lower()
-        if self.file_type=='fasta':
-            self.type=0
-        elif self.file_type=='fastq':
-            self.type=1
-        elif self.file_type=='sam':
-            self.type=2
+        if self.file_type == 'fasta':
+            self.type = 0
+        elif self.file_type == 'fastq':
+            self.type = 1
+        elif self.file_type == 'sam':
+            self.type = 2
             nextline = self.next_line
             while nextline.startswith('@'):
                 nextline = self.seq_file.readline()
             self.next_line = nextline
         else:
-            raise FileTypeError(file_type, "Unsupported file type.  Check spelling.")
-        
+            raise FileTypeError(file_type,
+                                "Unsupported file type.  Check spelling.")
+
     def __iter__(self):
         return self
 
     def __next__(self):
         return next(self)
 
-    def __next__(self):
+    def next(self):
         if self.type == 0:  # FASTA
             seq_id = self.next_line
             seq_seq = self.seq_file.readline()
@@ -61,7 +63,7 @@ class SeqIterator:
                     my_line = self.seq_file.readline()
                 self.next_line = my_line
                 return (seq_id.strip(">\n"), seq_seq)
-        elif self.type == 1: # FASTQ
+        elif self.type == 1:  # FASTQ
             seq_id = self.next_line
             seq_seq = self.seq_file.readline()
             seq_del = self.seq_file.readline()
@@ -70,8 +72,9 @@ class SeqIterator:
                 raise StopIteration
             self.c += 1
             self.next_line = self.seq_file.readline()
-            return (seq_id[1:len(seq_id)].strip("\n"), seq_seq.strip("\n"), seq_qual.strip("\n"), seq_del.strip("\n"))
-        elif self.type == 2: # SAM
+            return (seq_id[1:len(seq_id)].strip("\n"), seq_seq.strip("\n"),
+                    seq_qual.strip("\n"), seq_del.strip("\n"))
+        elif self.type == 2:  # SAM
             sam_dictionary = {}
             sam_line = self.next_line.strip("\n")
             if sam_line == None or sam_line == '':
@@ -89,11 +92,15 @@ class SeqIterator:
             sam_dictionary["TLEN"] = sam_list[8]
             sam_dictionary["SEQ"] = sam_list[9]
             sam_dictionary["QUAL"] = sam_list[10]
-            for i in range(10,len(sam_list)):
+            for i in range(10, len(sam_list)):
                 if sam_list[i].startswith("AS:i"):
-                    sam_dictionary[Constants.SAM_KEY_ALIGNMENT_SCORE] = sam_list[i].strip("AS:i:")
+                    sam_dictionary[
+                        Constants.SAM_KEY_ALIGNMENT_SCORE] = sam_list[i].strip(
+                            "AS:i:")
                 elif sam_list[i].startswith("AS:f"):
-                    sam_dictionary[Constants.SAM_KEY_ALIGNMENT_SCORE] = sam_list[i].strip("AS:f:")
+                    sam_dictionary[
+                        Constants.SAM_KEY_ALIGNMENT_SCORE] = sam_list[i].strip(
+                            "AS:f:")
                 elif sam_list[i].startswith("NM:i"):
                     sam_dictionary["NM:i"] = sam_list[i].strip("NM:i:")
                 elif sam_list[i].startswith("NH:i"):
@@ -112,22 +119,21 @@ class SeqIterator:
                     sam_dictionary["XS:Z"] = sam_list[i].strip("XS:Z:")
             self.next_line = self.seq_file.readline()
             return sam_dictionary
-        else: # Unsupported
+        else:  # Unsupported
             raise StopIteration
-    
-            
+
     def reset(self):
         self.c = 0
         self.seq_file.close()
         self.my_init(self.file_name, file_type=self.file_type)
-        
+
     def count(self):
         count = 0
         for _ in self:
             count += 1
         self.reset()
         return count
-    
+
     def peekAtId(self):
         if self.next_line == None or self.next_line == '':
             return None
@@ -137,11 +143,10 @@ class SeqIterator:
             return self.next_line[1:len(self.next_line)].strip("\n")
         elif self.type == 2:
             return self.next_line.strip("\n").split()[0]
-    
+
     def records_processed(self):
         return self.c
-    
-    
+
     def convertToDict(self, *argv):
         record_dict = {}
         #my_counter = 0
@@ -156,65 +161,77 @@ class SeqIterator:
             record_dict[QNAME] = record_list
             #my_counter += 1
         return record_dict
-            
-            
+
+
 class SeqWriter:
-    
-    sam_standard_fields = ["QNAME", "FLAG", "RNAME", "POS", "MAPQ", "CIGAR", "RNEXT", "PNEXT", "TLEN", "SEQ", "QUAL"]
-    bfast_fields = ["PG:Z", Constants.SAM_KEY_ALIGNMENT_SCORE, "NM:i", "NH:i", "IH:i", "HI:i", "MD:Z", "XA:i", "XR:Z", "XG:Z", "XM:Z", Constants.SAM_KEY_RECOVERED, Constants.SAM_KEY_RESCORE]
-    
-    def __init__(self, seq_file, file_type='fasta', line_toggle=False, line_length=80):
+
+    sam_standard_fields = [
+        "QNAME", "FLAG", "RNAME", "POS", "MAPQ", "CIGAR", "RNEXT", "PNEXT",
+        "TLEN", "SEQ", "QUAL"
+    ]
+    bfast_fields = [
+        "PG:Z", Constants.SAM_KEY_ALIGNMENT_SCORE, "NM:i", "NH:i", "IH:i",
+        "HI:i", "MD:Z", "XA:i", "XR:Z", "XG:Z", "XM:Z",
+        Constants.SAM_KEY_RECOVERED, Constants.SAM_KEY_RESCORE
+    ]
+
+    def __init__(self,
+                 seq_file,
+                 file_type='fasta',
+                 line_toggle=False,
+                 line_length=80):
         self.seq_file = seq_file
         self.current = 0
         self.line_toggle = line_toggle
         self.line_length = line_length
         file_type = file_type.lower()
-        if file_type=='fasta':
-            self.type=0
-        elif file_type=='fastq':
-            self.type=1
-        elif file_type=='sam':
-            self.type=2
+        if file_type == 'fasta':
+            self.type = 0
+        elif file_type == 'fastq':
+            self.type = 1
+        elif file_type == 'sam':
+            self.type = 2
         else:
-            raise FileTypeError(file_type, "Unsupported file type.  Check spelling.")
-        
+            raise FileTypeError(file_type,
+                                "Unsupported file type.  Check spelling.")
+
     def write(self, seq):
-        if self.type == 0: #Fasta
+        if self.type == 0:  # Fasta
             if self.line_toggle:
                 self.seq_file.write(">" + seq[0] + "\n")
                 count = 0
                 seq_str = seq[1]
                 while count + self.line_length < len(seq_str):
-                    seq_out = seq_str[count:count+self.line_length]
+                    seq_out = seq_str[count:count + self.line_length]
                     self.seq_file.write(seq_out + "\n")
                     count += self.line_length
                 seq_out = seq_str[count:len(seq_str)]
                 self.seq_file.write(seq_out + "\n")
             else:
                 self.seq_file.write(">" + seq[0] + "\n" + seq[1] + "\n")
-        elif self.type == 1: #Fastq
+        elif self.type == 1:  # Fastq
             separator = "+"
             if len(seq) == 4:
                 separator = seq[3]
-            self.seq_file.write("@" + seq[0] + "\n" + seq[1] + "\n" + separator + "\n" + seq[2] + "\n")
-        elif self.type == 2: #SAM
-            if isinstance(seq, str): #For writing comments
+            self.seq_file.write("@" + seq[0] + "\n" + seq[1] + "\n" +
+                                separator + "\n" + seq[2] + "\n")
+        elif self.type == 2:  # SAM
+            if isinstance(seq, str):  # For writing comments
                 self.seq_file.write(seq)
-            else: #Write a record
+            else:  # Write a record
                 line_string = ""
                 for field in SeqWriter.sam_standard_fields:
                     line_string += seq[field] + "\t"
-                for field in seq: #Could use complementation on the list of keys instead
+                for field in seq:  # Could use complementation on the list of keys instead
                     if field not in SeqWriter.sam_standard_fields:
                         value = str(seq[field])
                         if (field == Constants.SAM_KEY_ALIGNMENT_SCORE):
                             field = Constants.SAM_KEY_ALIGNMENT_SCORE + ":f"
                         line_string += field + ":" + value + "\t"
                 self.seq_file.write(line_string + "\n")
-            
+
     def close(self):
         self.seq_file.close()
-    
+
     def flush(self):
         self.seq_file.flush()
-        
